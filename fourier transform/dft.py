@@ -44,25 +44,11 @@ def fft(x):
         return X
 
 def fft2(x):
-  h,w = x.shape
-  X = np.zeros((h,w))
-  for r in h :
-    for c in w :
-      X[:,c] += fft(x[:,c])
-    X[r,:] += fft(x[r,:])
-  return X 
-
-  def fft(x):
-   
-    N = len(x) 
-    if N == 1: 
-        return x 
-    else: 
-        X_even = fft(x[::2])
-        X_odd = fft(x[1::2])
-        factor = np.exp(-2j * np.pi * np.arange(N) / N)
-        X = np.concatenate([
-            X_even + factor[:int(N / 2)] * X_odd , 
-            X_even + factor[int(N / 2) :]  * X_odd
-            ])
-        return X
+  h, w = x.shape 
+  X = np.zeros([h,w] , 'complex128')
+  for i in range(h):
+    X[i,:] = fft(X[i,:])
+  for j in range(w):
+    X[:,j] = fft(X[:,j])
+  return X
+  
