@@ -74,5 +74,5 @@ def motion_blur(img, a,b,T):
   g = np.fft.ifft2(G)
   g = np.real(g)
   img_cretralization(g)
-  return g
+  return g  , H
 
