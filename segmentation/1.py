@@ -1,10 +1,10 @@
 # 要添加一个新单元，输入 '# %%'
 # 要添加一个新的标记单元，输入 '# %% [markdown]'
 # %%
-from  matplotlib import pyplot as plt 
+import matplotlib.pyplot as plt
 import numpy as np 
 from scipy import ndimage as ndim 
-from  skimage import filters , feature
+from  skimage import filters, feature
 
 
 # %%
