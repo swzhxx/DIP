@@ -1,7 +1,7 @@
-# 数字图像处理(Digital Image Processing)
+# 数字图像处理（Digital Image Processing）
 
 使用 **数字图像处理(第四版)** 
 
 这个仓库会记录下我读书的笔记。
-按照自己对书本中原理的理解，通过python实现。挑选书中的例子进行实现。 
+按照自己对书本中原理的理解，挑选书中的例子使用Python语言进行实现。 
 
