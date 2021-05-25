@@ -63,6 +63,7 @@
 # %%
 import numpy as np 
 import matplotlib.pyplot as plt 
+import math
 
 
 # %%
@@ -71,7 +72,7 @@ plt.imshow(f, "gray")
 
 
 # %%
-import math 
+
 def get_gradient(f , y , x ):
     return (f[y + 1][x]  - f[y - 1][x] + f[y][x + 1] -f [y][x- 1]) /  2 
 def init_cluster(f,k):
@@ -114,7 +115,7 @@ def nomalize_distance(cluster ,  super_pixel , dsm , c  = 1):
     dc = abs(l - _l)
 
     ds = ( y - _y ) ** 2 + (x  - _x) ** 2   
-    return math.sqrt(dc ** 2 + ds  / (dsm ** 2) * c ** 2)
+    return dc ** 2 + (ds  / dsm) ** 2 * c ** 2
 
 """
 f 元图像
@@ -125,49 +126,50 @@ def slic(f,k,cluster = None , T = 0.001 , s = None):
     h,w = f.shape
     _f = np.zeros((h,w,2) , dtype="float")
     _f[:,:,0] = -1 
-    _f[:,:,1] = float('inf')
- 
+    _f[:,:,1] = float('inf')    
     ori_cluster = None 
     # 初始化聚类中心
     if cluster is None : 
         cluster , s = init_cluster(f, k)
     _cluster = np.zeros(len(cluster)) + 1
     ori_cluster = cluster.copy()
-    for y in range(h):
-        for x in range(w):
-            value = f[y][x]
-            min_dist = None 
-            closest_cluster_index = None 
-            superpixel = [y,x,value]
-            for ci in range(len(cluster)):
-                if min_dist is None : 
-                    dist = nomalize_distance(cluster[ci] , superpixel , dsm = s)
-                    min_dist = dist 
-                    closest_cluster_index = ci 
-                else : 
-                    dist = nomalize_distance(cluster[ci] , superpixel ,  dsm = s) 
-                    if min_dist > dist : 
-                        dist = min_dist
-                        closest_cluster_index = ci
-            # Update
-            _f[y][x] = np.array([closest_cluster_index , min_dist])
-            count = _cluster[closest_cluster_index] 
-            mean = (count * cluster[closest_cluster_index] + superpixel) / (count + 1 )
-            cluster[closest_cluster_index] = mean
-            _cluster[closest_cluster_index] = _cluster[closest_cluster_index] + 1
+    
+    for ci in range(len(cluster)):
+        _cluster = cluster[ci]
+        cy,cx,_ = _cluster
+        for y in range(cy - s  , cy + s - 1):
+            for x in range(cx - s , cx + s - 1):
+                if (y < 0 or x < 0 or y>=h or x >= w) :
+                      continue
+                else:
+                    l = f[y][x]
+                    _ , di = _f[y][x]
+                    superpixel = [y,x,l]                             
+                    D = nomalize_distance(_cluster ,superpixel , dsm = s)
+                    if di > D: 
+                        _f[y][x] = np.array([ci , D])
+    #Update cluster
+    for ci in range(len(cluster)):
+        ys , xs ,_= np.where(_f[:,:,1:2] == ci)
+        if(len(ys) == 0):
+          continue
+        ymean = int(np.mean(ys))
+        xmean = int(np.mean(xs))        
+        lmean = np.mean(f[ys,xs])
+        cluster[ci]= np.array([ymean,xmean,lmean])
 
     # 完成一次聚类，检测阈值
     E = np.linalg.norm(
-    np.array(
-      [np.mean(ori_cluster[:,:1]), 
-      np.mean(ori_cluster[:,1:2]),
-      np.mean(ori_cluster[:,2:])
-      ]) - 
-    np.array([
-      np.mean(cluster[:,:1]), 
-      np.mean(cluster[:,1:2]),
-      np.mean(cluster[:,2:3])
-    ])
+        np.array(
+        [np.mean(ori_cluster[:,:1]), 
+        np.mean(ori_cluster[:,1:2]),
+        np.mean(ori_cluster[:,2:])
+        ]) - 
+        np.array([
+        np.mean(cluster[:,:1]), 
+        np.mean(cluster[:,1:2]),
+        np.mean(cluster[:,2:])
+        ])
     )
     print ("E" , E)
     
@@ -178,16 +180,25 @@ def slic(f,k,cluster = None , T = 0.001 , s = None):
 
 
 # %%
-cluster , g_label = slic(f , 250 , T = 1 )
-g = np.zeros(f.shape)
-h,w = f.shape
-for y in range(h):
-    for x in range(w) : 
-        label , d = g_label[y][x]
-        _,_,l= cluster[label]
-        g[y][x] = l
+cluster , g_label = slic(f , 500 , T = 1 )
+
 
 # %%
-plt.imshow(g ,"gray")
+g = np.zeros(f.shape)
+print(len(cluster))
+for ci in range(len(cluster)):
+    ys,xs = np.where(g_label[:,:,1] == ci)
+    _,_,l = cluster[ci]    
+    if(len(ys) == 0):
+        continue    
+    for y,x in zip(ys,xs):
+        g[y][x] = l
+plt.imshow(g , "gray")
+
+
+
+
+# %%
+
 
 
