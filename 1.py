@@ -1,86 +1,31 @@
 # 要添加一个新单元，输入 '# %%'
 # 要添加一个新的标记单元，输入 '# %% [markdown]'
 # %% [markdown]
-# # 图割
-# 
-# 图割方法的原理：首先将图像中的各个像素表示为图的各个节点，然后求图到节点组的最优分割。最优的判断是，某个组中的成员的值较高，而不同组的成员的值较低。图割分割的结果要优于本章的其他分割方法的结果。这种优点的代价是增大了实现的复杂性，进而降低了执行的速度
+# # 尺度不变特征变换(Scale-invariant feature transform , SIFT)
 # %% [markdown]
-# ## 作为图的图像
-# 图G是由节点集合V和连接这些顶点的边的集合E组成的数学结构：
-# $$
-#     G = (V , E)
-# $$
-# 式中，V是一个集合：
-# $$
-#     E \subseteq V \times V
-# $$
-# 是V中有序元素对的集合。诺$(u,v) \in E $,反之亦然，则被称为无相图；否则图被称为有向图。
+# SIFT算法的第一阶段是找到对尺度变化不变的图像位置。 这是在所有可能的尺度上使用一个称为尺度空间的函数搜索稳定的特征实现的，尺度空间是一种多尺度表示，它以一致的方式处理不同尺度的图像结构。基本思想是以某种形式来处理这样一个事实。由于事先并不知道这些尺度，因此一种合理的方法是同时处理所有相关的尺度。尺度空间将图像表示为平滑后的图像的一个参数族，目的时模拟图像的尺度减小时出现的细节损失。控制平滑的参数成为尺度参数。
 # 
-# 我门感兴趣的图是无向图，五向图的边由矩阵W进一步表征，无向图的元素$w(i,j)$是与连接节点i和j的边相关联的权重。因为图是无向的，所以有$w(i,j) = w(j,i)$,这表明W是对称矩阵。所选权重与所有节点对之间的一个或多个相似性测度成正比。边与权相关联的图称为加权图。
-# 
-# 本次介绍的内容是将待分割图像表示为一个加权的无向图，其中图的节点是图像中的像素，边在每对节点之间形成。每条边的权重$w(i,j)$是节点i和j之间相似性的函数。然后试图将图的节点划分为不相交的子集$V_1,V_2,V_3,....,V_k$,按照某个测度，一个子集内的节点之间的相似性高，而不同子集节点之间的相似性低。分割后的子集的节点，对应与分割后的图像中的区域。
-# 
-# 通过切割图将集合V划分为多个子集。图的一次切割将V分为两个子集A和B ， 满足：
+# 在SIFT算法中，高斯核用于实现平滑，因此尺度参数是标准差。使用高斯核的依据是Lindberg的研究成果，他证明只有满足一组重要约束条件的平滑核才是高斯低通核。因此，灰度图像$f(x,y)$的尺度空间
+# $L(x,y,\sigma )$是$f$与一个可变尺度高斯核$G(x,y,\sigma)$的卷积：
 # $$
-#     A \bigcup B = V 和 A \bigcap B = \varnothing
-# $$
-# 其中切割是通过删除连接子图A和B的边来实现的。使用图割来分割图像时，有两个关键的问题：
-# 
-# 1） 如何关联图与图像
-# 
-# 2） 如何以将图像分割成背景和前景像素的方式来切割图。
-# %% [markdown]
-# 图像生成图的一种简化方法。图中的节点对应与图像中的像素，为便于说明，我们只允许相邻像素之间的边使用4连通，这意味着不存在连接这些像素的对角边。但要记住的是，一般来说，边在每对像素之间规定。边的权重通常由空间关系(如顶点像素距离)和灰度测度(如纹理和颜色)形成，这与展示像素间的相似性一致。在这个简单的例子中，我们将两个像素间的相似性定义为他们的灰度差的倒数。也就是说，对与两个节点(像素)$n_i$和$n_j$,他们之间的边的权重是$w(i,j) = 1 / (|I(n_i) - I(n_j)| + c)$，其中$I(n_i)$和$I(n_j)$是两个节点(像素)的灰度，c是防止被零除而包含的一个常数。因此，相邻像素之间的灰度值越接近，w的值越大
-# %% [markdown]
-# ## 最小图割
-# 
-# 将图像表示为图后，下一步是将图切割为两个或多个子图。每个子图的节点（像素）都对应于分割后的图像的一个区域。，依赖于将图解释为流网络并得到通常称为最小图割内容。这一表诉依据的是所谓的最大流，最小割定理。这个定理指出，在流网络中，从源终端节点传递到汇聚终端节点的最大流量等于最小割。最小割定义为边的最小权重，诺删除他，则会断开汇聚终端节点与源终端节点
-# $$
-#     cut(A,B) = \sum_{u \in A , v \in B}w(u,v)
+#     L(x,y,\sigma) = G(x,y,\sigma) \star f(x,y)
 # $$
 # 
-# 图的最优划分是将使得这个切割值最小的划分。这样的划分有一个指数，因此计算起来较为困难。然而，为求解最大流问题，人们开发了许多以多项式时间运行的高效算法。因此，根据最大流，最小割定理，我们可以对图像分割应用这些算法，条件是我们将分割作为一个流问题处理，并为边和t链选择使图割最小的权重，进而得到有意义的分割。
-# %% [markdown]
-# ## 计算最小图割
-# 令V表示图G的节点，令A和B是满足式的V的两个子集。令K表示V中的节点数，并定义一个K维指示向量x：诺V的节点$n_i$在A中，则这个向量的元素$x_i = 1$;诺V的节点$n_i$在B中，则$x_i = - 1$。令
+# 式中，尺度参数$\sigma$控制，G的形式如下：
 # $$
-#     d_i = \sum w(i,j)
+#  G(x,y,\sigma) = \frac{1}{2\pi \sigma} e^{(-x^2 + y^2) / 2\sigma^2}
 # $$
-# 是V中从节点$n_i$到所有其他节点的权重之和。使用这些定义，可将式写为:
-# $$
-#     Ncut(A,B) = \frac{cut(A,B)}{cut(A,V)} + \frac{cut(A,B)}{cut(B,V)}
-#               = \frac{\sum_{x_i>0 , x_j<0} -w(i,j)x_ix_j}{\sum_{x_i>0}d_i} + \frac{\sum_{x_i<0,x_j>0}-w(i,j)x_ix_j}{\sum_{x_i<0}d_i}
-# $$
-# 目的是找到一个向量x，以最小化$Ncut(A,B)$。是的最小的解析解可以求出，但只有当x的元素是实联系数而不限制为$\pm 1$时才可行。 Shi And Malik给出的解是通过求解广义本征系统表达式得到的：
-# $$
-#     （D-W）y = \lambda Dy
-# $$
-# 式中，D是一个大小为$K \times K$的对角矩阵，对角元素为$d_i$,$i = 1,2,3....,K$;W是一个大小为$K \times K$的权重矩阵，其元素$w(i,j)$的定义见前面的说明。解方程得到K个本征值和K个本征向量，每个本征向量对应一个本征值。我们的问题的解是对应于第二小本征值的一个本征向量。
+# 输入图像$f(x,y)$依次与标准差$\sigma , k\sigma , k^2\sigma,k^3\sigma$的高斯核卷积，生成一堆由常量因子$k$分割的高斯滤波图像。
 # 
-# 我们可以将前面的广义本征值公式转换为一个标准的本征值问题。
-# $$
-#     Az = \lambda z 
-# $$
-# 式中， $A = D^{-1/2}(D-W)D^{-1/2}$
+# SIFT 将尺度空间分为倍频程，每个倍频程对应与$\sigma$的加倍，类似与音乐理论中的一个倍频程对应于声音信号的频率倍增。SIFT将每个倍频程进一步细分为整数s个区间，因此区间1由两幅图像组成，区间2由三幅图像组成，以此类推。于是可以证明，在生成与一个倍频程对应的图像的高斯核中，所用的值是$k^s\sigma = 2\sigma$，这意味这$k = 2 ^ {1/s}$。 例如，对于 $s = 2 , k = \sqrt{2}$,并且连续地使用标准差$\sigma , \sqrt{2}\sigma , (\sqrt(\sigma))^2$来平滑图像，以便使用标准差为$\sqrt{2}^2\sigma = 2\sigma$的高斯核对序列中的第三副图像(即 s = 2 的倍频程)进行滤波。
 # 
-# 和 $z = D^{1/2}y$
 # 
-# 由此得出 $y = D^{1/2}z$
-# 
-# 因此使用一个广义的或标准的本征值求解程序，就可以求出与第二最小本征值对应本征向量。通过找到一个将连续本征向量元素的值分为两部分的分离点，就可以得到的连续值解向量生成所需的向量x。我们是通过找到产生最小Ncut值的分离点来实现这一目的，因为这是我们正试图最小化的量。
-# %% [markdown]
-# ## 图割分割算法
-# 1. 给定一组特征，规定一个加权图$G = (V,E)$其中V包含特征空间的点，E包含图的边。计算边的权值，并用他们构建矩阵W和D。令K表示图中所需的分区数量。
-# 2. 解本征值系统$ (D-W)y= \lambda Dy $,求出具有第二最小本征值的特征向量
-# 3. 使用步骤2的本征向量，通过求使得$Ncut(A,B)$最小的分离点，对图进行二分。
-# 4. 如果切割数未达到K，那么通过检查切割的稳定性来确定是否应细分当前的分区。
-# 5. 必要时，递归地重新划分已分割的部分。
 
 # %%
-from os import execlp
 import numpy as np 
 import matplotlib.pyplot as plt 
-
+import scipy.ndimage as ndimage
+import cv2
 
 # %%
 f = plt.imread("./images/building-600by600.tif")
@@ -88,84 +33,43 @@ plt.imshow(f , "gray")
 
 
 # %%
-# 人为制造前景，背景的集合
-A = list()
-B = list()
-for x in range(f.shape[1]):
-    A.append([500,x])
-    B.append([200,x])
-A = np.array(A)
-B = np.array(B)
+
+def create_dog(f , s = 2 , sigma = 1.6 , n_ocatives = None ):
+    h,w = f.shape 
+    if n_ocatives is None:
+        n_ocatives = np.log2(min(h,w)) - 3
+    k = pow(2 , 1/s)   
+    gc = s + 2
+    gs = []
+    temp = []
+    for cloth in range(gc):
+        g =  ndimage.gaussian_filter(f , pow(k , cloth) * sigma)
+        temp.append(g)
+    gs.append(temp)
+    if n_ocatives > 1 :
+        gs.append(create_dog(cv2.resize(temp[-3],(int(h/2) , int(w/2))), s , sigma , n_ocatives = n_ocatives - 1 ))
+    return gs 
 
 
 # %%
-import math
-def compute_weight(pixel_1,pixel_2,r,sigma_i= 1,sigma_d =1):
-    y,x,l = pixel_1
-    _y,_x,_l = pixel_2
-    dist = (y-_y) ** 2 + (x-_x) ** 2
-    weight = 0 
-    if dist <= r ** 2 :        
-        powi = (- math.pow(l - _l,2)) / math.pow(sigma_i,2)         
-        weight = np.exp(powi) * np.exp(dist / math.pow(sigma_d,2))
-    return weight
+dog = create_dog(f)
 
 
-# %%
-# V 是节点的集合，在这个算法中是超像素(y,x,l)的集合
-V = []  
-h,w  = f.shape
-for y in range(h):
-    for x in range(w):
-        l = f[y][x]
-        V.append([y,x,l])
-V = np.array(V)
-V.shape
 
 
-# %%
-# W矩阵，计算每个节点之间的权重
-r = 1 
-v_len = V.shape[0]
-W = [0 for _ in range(v_len)]
-for i in range(v_len):
-    print(i,i)
-    W[i] = [0,0,0,0]
-    row = i / h
-    column = i % h 
-    # 4领域，顺时针
-    neribor = [-w, 1 , w , - 1]
-    if row == 0:
-        neribor[0] = None
-    if row == h - 1 :
-        neribor[2] = None 
-    if column == 0 :
-        neribor[3] = None 
-    if column == w - 1 :
-        neribor[1] = None
-    index = 0 
-    for offset in neribor:        
-        if offset is None:
-            index = index + 1
-            continue 
-        if i + offset >= v_len:
-            continue
-        try:
-          nsp = V[i + offset]
-          weight = compute_weight(V[i] , V[i + offset] ,r  =1 )
-          W[i][index] = weight  
-          index = index + 1 
-        except:
-          pass
-W
-            
-         
-        
+fig = plt.figure()
 
+dog_l = len(dog)
+
+for gs in dog:
+    j = 0
+    for g in gs:
+        ax = fig.add_subplot(dog_l * 100 + dog_l * 10 + j +1)
+        ax.imshow(g,"gray")
+        j = j + 1
     
-
-
-# %%
+plt.show()
+    
 
 
 
