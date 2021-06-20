@@ -10,7 +10,7 @@ const HelloWasm = (props: any): JSX.Element => {
   }
   const handleSliceSharedRef = () => {
     let a = new Uint8Array(200)
-    wasm.take_number_slice_by_shared_ref(a)
+    wasm.takeNumberSliceBySharedRef(a)
     console.log(a)
   }
   return (

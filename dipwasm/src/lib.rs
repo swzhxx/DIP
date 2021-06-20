@@ -13,7 +13,7 @@ pub fn wasmalert(s: &str) {
     }
 }
 
-#[wasm_bindgen]
+#[wasm_bindgen(js_name = takeNumberSliceBySharedRef)]
 pub fn take_number_slice_by_shared_ref(slices: &mut [u8]) {
     for i in slices {
         unsafe { *i = 255 }
