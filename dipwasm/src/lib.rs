@@ -1,6 +1,9 @@
+use js_sys::Math;
+use ndarray::prelude::*;
 use wasm_bindgen::prelude::*;
 use wasm_bindgen::Clamped;
 use web_sys::ImageData;
+
 #[wasm_bindgen]
 extern "C" {
     #[wasm_bindgen]
@@ -40,5 +43,32 @@ pub fn make_image_data(data: ImageData) -> Result<ImageData, JsValue> {
 
 #[wasm_bindgen(js_name=letsPapperNoise)]
 pub fn lets_papper_noise(data: ImageData) -> Result<ImageData, JsValue> {
-    unimplemented!()
+    let width = data.width() as usize;
+    let height = data.height() as usize;
+    let data: &Vec<u8> = &data.data();
+    let mut a: Array3<u8> = Array::from_shape_vec((width, height, 4), data.to_vec()).unwrap();
+    for y in 0..height {
+        for x in 0..width {
+            let r = unsafe { Math::random() };
+            if r < 0.99 {
+                continue;
+            }
+            if r > 0.995 {
+                //a[[y as usize, x as usize, 0]] = 42 as u8;
+                a[[y as usize, x as usize, 0]] = 255 as u8;
+                a[[y as usize, x as usize, 1]] = 255 as u8;
+                a[[y as usize, x as usize, 2]] = 255 as u8;
+                a[[y as usize, x as usize, 3]] = 255 as u8;
+            } else {
+                a[[y as usize, x as usize, 0]] = 0 as u8;
+                a[[y as usize, x as usize, 1]] = 0 as u8;
+                a[[y as usize, x as usize, 2]] = 0 as u8;
+                a[[y as usize, x as usize, 3]] = 255 as u8;
+            }
+        }
+    }
+
+    //
+    let mut data = Clamped(a.into_raw_vec());
+    ImageData::new_with_u8_clamped_array_and_sh(Clamped(&mut data), width as u32, height as u32)
 }

@@ -173,6 +173,14 @@ function _assertNum(n) {
     if (typeof(n) !== 'number') throw new Error('expected a number argument');
 }
 
+let cachegetInt32Memory0 = null;
+function getInt32Memory0() {
+    if (cachegetInt32Memory0 === null || cachegetInt32Memory0.buffer !== wasm.memory.buffer) {
+        cachegetInt32Memory0 = new Int32Array(wasm.memory.buffer);
+    }
+    return cachegetInt32Memory0;
+}
+
 let cachegetUint8ClampedMemory0 = null;
 function getUint8ClampedMemory0() {
     if (cachegetUint8ClampedMemory0 === null || cachegetUint8ClampedMemory0.buffer !== wasm.memory.buffer) {
@@ -192,6 +200,8 @@ function handleError(f, args) {
         wasm.__wbindgen_exn_store(addHeapObject(e));
     }
 }
+
+function notDefined(what) { return () => { throw new Error(`${what} is not defined`); }; }
 
 export function __wbg_alert_b3ffcba5522bd6cd() { return logError(function (arg0, arg1) {
     alert(getStringFromWasm0(arg0, arg1));
@@ -213,6 +223,14 @@ export function __wbg_height_3711225374206b37() { return logError(function (arg0
     return ret;
 }, arguments) };
 
+export function __wbg_data_315524ada7b563f4() { return logError(function (arg0, arg1) {
+    var ret = getObject(arg1).data;
+    var ptr0 = passArray8ToWasm0(ret, wasm.__wbindgen_malloc);
+    var len0 = WASM_VECTOR_LEN;
+    getInt32Memory0()[arg0 / 4 + 1] = len0;
+    getInt32Memory0()[arg0 / 4 + 0] = ptr0;
+}, arguments) };
+
 export function __wbg_newwithu8clampedarrayandsh_d5177e9b24f89848() { return handleError(function (arg0, arg1, arg2, arg3) {
     var ret = new ImageData(getClampedArrayU8FromWasm0(arg0, arg1), arg2 >>> 0, arg3 >>> 0);
     return addHeapObject(ret);
@@ -221,6 +239,8 @@ export function __wbg_newwithu8clampedarrayandsh_d5177e9b24f89848() { return han
 export function __wbindgen_object_drop_ref(arg0) {
     takeObject(arg0);
 };
+
+export const __wbg_random_29218b0f217b2697 = typeof Math.random == 'function' ? Math.random : notDefined('Math.random');
 
 export function __wbindgen_throw(arg0, arg1) {
     throw new Error(getStringFromWasm0(arg0, arg1));

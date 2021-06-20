@@ -42,6 +42,8 @@ const HelloWasm = (props: any): JSX.Element => {
       }
       let imgElement: HTMLImageElement = img.current as HTMLImageElement
       ctx.drawImage(imgElement, 0, 0)
+      let imageData = wasm.letsPapperNoise(ctx.getImageData(0, 0, 512, 512))
+      ctx.putImageData(imageData, 0, 0)
     })
   }
 
@@ -73,7 +75,7 @@ const HelloWasm = (props: any): JSX.Element => {
         style={{ marginTop: '10px', display: 'flex', justifyContent: 'center' }}
       >
         <div style={{ display: showPapeerNoise ? 'inline-block' : 'none' }}>
-          <h3>原图：</h3>
+          <h3>Origin:</h3>
           <img
             ref={img}
             src={`${process.env.PUBLIC_URL}/images/logo512.png`}
