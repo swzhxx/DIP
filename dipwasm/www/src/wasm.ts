@@ -1,8 +1,5 @@
-import type DipWasm from '@pkg/index'
-let wasm: DipWasm = {}
-
+let wasm: typeof import('@pkg/index')
 import('@pkg/index').then((module) => {
   wasm = module
 })
-
 export { wasm }
