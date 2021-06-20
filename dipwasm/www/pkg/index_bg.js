@@ -1,5 +1,25 @@
 import * as wasm from './index_bg.wasm';
 
+const heap = new Array(32).fill(undefined);
+
+heap.push(undefined, null, true, false);
+
+function getObject(idx) { return heap[idx]; }
+
+let heap_next = heap.length;
+
+function dropObject(idx) {
+    if (idx < 36) return;
+    heap[idx] = heap_next;
+    heap_next = idx;
+}
+
+function takeObject(idx) {
+    const ret = getObject(idx);
+    dropObject(idx);
+    return ret;
+}
+
 const lTextDecoder = typeof TextDecoder === 'undefined' ? (0, module.require)('util').TextDecoder : TextDecoder;
 
 let cachedTextDecoder = new lTextDecoder('utf-8', { ignoreBOM: true, fatal: true });
@@ -121,11 +141,83 @@ export function takeNumberSliceBySharedRef(slices) {
     }
 }
 
+function addHeapObject(obj) {
+    if (heap_next === heap.length) heap.push(heap.length + 1);
+    const idx = heap_next;
+    heap_next = heap[idx];
+
+    if (typeof(heap_next) !== 'number') throw new Error('corrupt heap');
+
+    heap[idx] = obj;
+    return idx;
+}
+/**
+* @param {ImageData} data
+* @returns {ImageData}
+*/
+export function makeImageData(data) {
+    var ret = wasm.makeImageData(addHeapObject(data));
+    return takeObject(ret);
+}
+
+function _assertNum(n) {
+    if (typeof(n) !== 'number') throw new Error('expected a number argument');
+}
+
+let cachegetUint8ClampedMemory0 = null;
+function getUint8ClampedMemory0() {
+    if (cachegetUint8ClampedMemory0 === null || cachegetUint8ClampedMemory0.buffer !== wasm.memory.buffer) {
+        cachegetUint8ClampedMemory0 = new Uint8ClampedArray(wasm.memory.buffer);
+    }
+    return cachegetUint8ClampedMemory0;
+}
+
+function getClampedArrayU8FromWasm0(ptr, len) {
+    return getUint8ClampedMemory0().subarray(ptr / 1, ptr / 1 + len);
+}
+
+function handleError(f, args) {
+    try {
+        return f.apply(this, args);
+    } catch (e) {
+        wasm.__wbindgen_exn_store(addHeapObject(e));
+    }
+}
+
 export function __wbg_alert_b3ffcba5522bd6cd() { return logError(function (arg0, arg1) {
     alert(getStringFromWasm0(arg0, arg1));
 }, arguments) };
 
+export function __wbg_log_9e27e4f65a9ccd84() { return logError(function (arg0, arg1) {
+    console.log(getStringFromWasm0(arg0, arg1));
+}, arguments) };
+
+export function __wbg_width_5c37496c7c69eaa2() { return logError(function (arg0) {
+    var ret = getObject(arg0).width;
+    _assertNum(ret);
+    return ret;
+}, arguments) };
+
+export function __wbg_height_3711225374206b37() { return logError(function (arg0) {
+    var ret = getObject(arg0).height;
+    _assertNum(ret);
+    return ret;
+}, arguments) };
+
+export function __wbg_newwithu8clampedarrayandsh_d5177e9b24f89848() { return handleError(function (arg0, arg1, arg2, arg3) {
+    var ret = new ImageData(getClampedArrayU8FromWasm0(arg0, arg1), arg2 >>> 0, arg3 >>> 0);
+    return addHeapObject(ret);
+}, arguments) };
+
+export function __wbindgen_object_drop_ref(arg0) {
+    takeObject(arg0);
+};
+
 export function __wbindgen_throw(arg0, arg1) {
     throw new Error(getStringFromWasm0(arg0, arg1));
+};
+
+export function __wbindgen_rethrow(arg0) {
+    throw takeObject(arg0);
 };
 
