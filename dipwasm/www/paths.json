@@ -3,7 +3,8 @@
     "baseUrl": ".",
     "paths": {
       "@/*": ["src/*"],
-      "@pkg/*": ["pkg/*"]
+      "@pkg/*": ["pkg/*"],
+      "@image/*": ["image/*"]
     }
   }
 }

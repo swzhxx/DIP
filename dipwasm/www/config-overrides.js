@@ -1,6 +1,7 @@
 const path = require('path')
 const { override, addWebpackAlias, addWebpackPlugin } = require('customize-cra')
 const WasmPackPlugin = require('@wasm-tool/wasm-pack-plugin')
+
 module.exports = override(
   addWebpackPlugin(
     new WasmPackPlugin({
@@ -11,6 +12,7 @@ module.exports = override(
   addWebpackAlias({
     '@': path.resolve(__dirname, './src'),
     '@pkg': path.resolve(__dirname, './pkg'),
+    '@images': path.resolve(__dirname, './images'),
   }),
   (config, env) => {
     const wasmExtensionRegExp = /\.wasm$/

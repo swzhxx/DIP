@@ -160,6 +160,15 @@ export function makeImageData(data) {
     return takeObject(ret);
 }
 
+/**
+* @param {ImageData} data
+* @returns {ImageData}
+*/
+export function letsPapperNoise(data) {
+    var ret = wasm.letsPapperNoise(addHeapObject(data));
+    return takeObject(ret);
+}
+
 function _assertNum(n) {
     if (typeof(n) !== 'number') throw new Error('expected a number argument');
 }

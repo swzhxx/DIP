@@ -37,3 +37,8 @@ pub fn make_image_data(data: ImageData) -> Result<ImageData, JsValue> {
         ImageData::new_with_u8_clamped_array_and_sh(Clamped(&mut v), width, height)
     }
 }
+
+#[wasm_bindgen(js_name=letsPapperNoise)]
+pub fn lets_papper_noise(data: ImageData) -> Result<ImageData, JsValue> {
+    unimplemented!()
+}

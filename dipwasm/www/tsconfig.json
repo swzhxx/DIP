@@ -23,7 +23,9 @@
   },
   "include": [
     "src/*",
-    "pkg/*"
+    "pkg/*",
+    "images/*",
+    "images/images.d.ts"
   ],
   "extends": "./paths.json"
 }
