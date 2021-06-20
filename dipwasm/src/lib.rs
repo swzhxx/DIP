@@ -12,3 +12,10 @@ pub fn wasmalert(s: &str) {
         alert(&format!("From Rust2 {}!", s));
     }
 }
+
+#[wasm_bindgen]
+pub fn take_number_slice_by_shared_ref(slices: &mut [u8]) {
+    for i in slices {
+        unsafe { *i = 255 }
+    }
+}

@@ -10,7 +10,7 @@ module.exports = override(
   ),
   addWebpackAlias({
     '@': path.resolve(__dirname, './src'),
-    dipwasm: path.resolve(__dirname, './../pkg'),
+    '@pkg': path.resolve(__dirname, './pkg'),
   }),
   (config, env) => {
     const wasmExtensionRegExp = /\.wasm$/
