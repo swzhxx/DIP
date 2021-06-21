@@ -75,3 +75,5 @@ pub fn lets_papper_noise(data: ImageData) -> Result<ImageData, JsValue> {
     let mut data = Clamped(a.into_raw_vec());
     ImageData::new_with_u8_clamped_array_and_sh(Clamped(&mut data), width as u32, height as u32)
 }
+
+pub mod color;

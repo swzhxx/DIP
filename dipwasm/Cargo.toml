@@ -11,6 +11,8 @@ crate-type = ["cdylib"]
 [dependencies]
 ndarray = "0.15.3"
 wasm-bindgen = "0.2.74"
+wasm-bindgen-test = "0.3.24"
+
 [dependencies.web-sys]
 features = ["ImageData"]
 version = "0.3.51"
