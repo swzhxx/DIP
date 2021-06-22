@@ -1,4 +1,4 @@
-use std::f64::consts::PI;
+use std::f64::consts::{FRAC_PI_3, PI};
 use wasm_bindgen::prelude::*;
 pub type NormalizeColorSpace = (f64, f64, f64);
 
@@ -51,10 +51,41 @@ impl HSI {
     pub fn new(h: f64, s: f64, i: f64) -> HSI {
         HSI(h, s, i)
     }
-    // #[wasm_bindgen(js_name = toRGB)]
-    // pub fn to_rgb(&self) -> RGB {
+    #[wasm_bindgen(js_name = toRGB)]
+    pub fn to_rgb(&self) -> RGB {
+        let HSI(temp_h, temp_s, temp_i) = self;
+        let temp_h = temp_h * 360. % 360.;
 
-    // }
+        let temp_0 = temp_i * (1. - temp_s);
+        let temp_1 = temp_i
+            * (1.
+                + temp_s * (temp_h / 180. * PI).cos()
+                    / ((FRAC_PI_3 - temp_h / 180. * PI).cos() + 0.0000001));
+        let temp_2 = 3. * temp_i - (temp_0 + temp_1);
+
+        let mut r: f64;
+        let mut g: f64;
+        let mut b: f64;
+
+        if 0. <= temp_h && temp_h <= 120. {
+            b = temp_0;
+            r = temp_1;
+            g = temp_2;
+        } else if 120. <= temp_h && temp_h < 240. {
+            r = temp_0;
+            g = temp_1;
+            b = temp_2;
+        } else {
+            g = temp_0;
+            b = temp_1;
+            r = temp_2;
+        }
+
+        let r: u8 = (r * 255.).round() as u8;
+        let g: u8 = (g * 255.).round() as u8;
+        let b: u8 = (b * 255.).round() as u8;
+        RGB(r, g, b)
+    }
 }
 
 use wasm_bindgen_test::*;
@@ -90,4 +121,26 @@ fn rgb_to_hsi() {
     assert!(difference_h < 1e-3);
     assert!(difference_s < 1e-3);
     assert!(difference_i < 1e-3);
+}
+
+#[wasm_bindgen_test]
+fn his_to_rgb() {
+    let hsi = HSI::new(0., 1., 0.333333337);
+
+    let rgb = hsi.to_rgb();
+    assert_eq!(rgb.0, 255);
+    assert_eq!(rgb.1, 0);
+    assert_eq!(rgb.2, 0);
+
+    let hsi = HSI::new(1. / 6., 1., 0.66666666667);
+    let rgb = hsi.to_rgb();
+    assert_eq!(rgb.0, 255);
+    assert_eq!(rgb.1, 255);
+    assert_eq!(rgb.2, 0);
+
+    let hsi = HSI::new(0., 0., 1.);
+    let rgb = hsi.to_rgb();
+    assert_eq!(rgb.0, 255);
+    assert_eq!(rgb.1, 255);
+    assert_eq!(rgb.2, 255);
 }
