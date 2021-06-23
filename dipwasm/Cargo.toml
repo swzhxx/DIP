@@ -10,6 +10,8 @@ crate-type = ["cdylib"]
 
 [dependencies]
 ndarray = "0.15.3"
+ndarray-vision = "0.2.0"
+
 wasm-bindgen = "0.2.74"
 wasm-bindgen-test = "0.3.24"
 

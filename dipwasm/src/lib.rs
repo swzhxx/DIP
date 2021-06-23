@@ -77,3 +77,5 @@ pub fn lets_papper_noise(data: ImageData) -> Result<ImageData, JsValue> {
 }
 
 pub mod color;
+
+pub mod filter;
