@@ -1,3 +1,5 @@
+use std::ops::Deref;
+
 use ndarray::prelude::*;
 
 pub fn kernel_centre(rows: usize, cols: usize) -> (usize, usize) {
@@ -12,6 +14,13 @@ pub struct Kernel<T> {
 impl<T> Kernel<T> {
     pub fn new(data: Array2<T>) -> Self {
         Kernel { data }
+    }
+}
+
+impl<T> Deref for Kernel<T> {
+    type Target = Array2<T>;
+    fn deref(&self) -> &Self::Target {
+        &self.data
     }
 }
 
