@@ -23,7 +23,7 @@ where
 {
     type Output = Array3<T>;
 
-    fn conv_2d<U: Data + Data<Elem = T + RawData>>(
+    fn conv_2d<U: Data + Data<Elem = T> + RawData>(
         &self,
         kernel: &Kernel<T>,
     ) -> Result<Self::Output, Error> {
@@ -36,15 +36,16 @@ where
             .slice_mut(s![1..shape[0] - 1, 1..shape[1] - 1, ..])
             .assign(self);
         // Convolution start
-        let kernel_shape = kernel.shape();
-        let raw_kernel = kernel.reshape((1, kernel.len()));
+        // let kernel_shape = kernel.shape();
+        let raw_kernel = kernel.clone().into_shape([1, kernel.len()]).unwrap();
         let channels = shape[2];
         for y in 1..padding_shape[0] - 1 {
             for x in 1..padding_shape[1] - 1 {
                 for channel in 0..channels {
                     let raw_data = padding_array
                         .slice_mut(s![y..y + shape[0], x..x + shape[1], channel])
-                        .reshape((1, kernel.len()));
+                        .into_shape((1, kernel.len()))
+                        .unwrap();
                     let conv = &raw_data * &raw_kernel;
                     padding_array[[y, x, channel]] = conv.sum();
                 }
