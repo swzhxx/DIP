@@ -1,6 +1,6 @@
-use std::ops::Deref;
-
 use ndarray::prelude::*;
+use std::f64::consts::PI;
+use std::ops::Deref;
 
 pub fn kernel_centre(rows: usize, cols: usize) -> (usize, usize) {
     unimplemented!()
@@ -31,7 +31,7 @@ pub fn gaussian_kernel(size: usize) -> Kernel<f64> {
     let gaussian = |y: usize, x: usize| {
         let t = y.pow(2) + x.pow(2);
         let sigma_square = sigma.powi(2);
-        let res = (t as f64 / sigma_square).exp();
+        let res = 1 / (2 * PI) * (t as f64 / sigma_square).exp();
         return res;
     };
     let shape = window.shape().to_vec();
