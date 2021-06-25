@@ -14,7 +14,7 @@ where
     T: Num + Copy + Clone + NumAssignOps + ToPrimitive + Default,
 {
     type Output;
-    fn conv_2d<U: Data + Data<Elem = T>>(&self, kernel: &Kernel<T>) -> Result<Self::Output, Error>;
+    fn conv_2d(&self, kernel: &Kernel<T>) -> Result<Self::Output, Error>;
 }
 
 impl<T> Convolution<T> for Array3<T>
@@ -23,35 +23,77 @@ where
 {
     type Output = Array3<T>;
 
-    fn conv_2d<U: Data + Data<Elem = T> + RawData>(
-        &self,
-        kernel: &Kernel<T>,
-    ) -> Result<Self::Output, Error> {
+    fn conv_2d(&self, kernel: &Kernel<T>) -> Result<Self::Output, Error> {
         // Data prepare
         let shape = self.shape();
-        let padding_shape = [shape[0] + 2, shape[1] + 2, shape[3]];
+        let conv_shape: [usize; 3] = shape.try_into().unwrap();
+        let kernel_shape = kernel.shape();
+        let padding = kernel_shape[0] / 2;
+        let padding_shape = [shape[0] + padding * 2, shape[1] + padding * 2, shape[2]];
         // 填充0
-        let mut padding_array = Array::from_shape_fn(padding_shape, |_| Zero::zero());
+        let mut padding_array: Array3<T> = Array::from_shape_fn(padding_shape, |_| Zero::zero());
+        let mut conv_array: Array3<T> = Array::from_shape_fn(conv_shape, |_| Zero::zero());
         padding_array
-            .slice_mut(s![1..shape[0] - 1, 1..shape[1] - 1, ..])
+            .slice_mut(s![
+                1..padding_shape[0] - padding,
+                1..padding_shape[1] - padding,
+                ..
+            ])
             .assign(self);
         // Convolution start
-        // let kernel_shape = kernel.shape();
         let raw_kernel = kernel.clone().into_shape([1, kernel.len()]).unwrap();
         let channels = shape[2];
-        for y in 1..padding_shape[0] - 1 {
-            for x in 1..padding_shape[1] - 1 {
+        for y in padding..(padding_shape[0] - padding) {
+            for x in padding..(padding_shape[1] - padding) {
                 for channel in 0..channels {
                     let raw_data = padding_array
-                        .slice_mut(s![y..y + shape[0], x..x + shape[1], channel])
-                        .into_shape((1, kernel.len()))
-                        .unwrap();
+                        .slice_mut(s![
+                            y - padding..y + kernel_shape[0] - padding,
+                            x - padding..x + kernel_shape[1] - padding,
+                            channel
+                        ])
+                        .to_owned();
+                    let raw_data = raw_data.into_shape([1, kernel.len()]).unwrap();
                     let conv = &raw_data * &raw_kernel;
-                    padding_array[[y, x, channel]] = conv.sum();
+                    conv_array[[y - padding, x - padding, channel]] = conv.sum();
                 }
             }
         }
-        Ok(padding_array)
+        Ok(conv_array)
+    }
+}
+
+#[cfg(test)]
+mod test {
+    use super::*;
+    use crate::core::kernel::Kernel;
+    use ndarray::prelude::*;
+    #[test]
+    fn conv_2d_with_1_channel() {
+        let data = array![
+            [1, 1, 1, 1, 1],
+            [1, 1, 1, 1, 1],
+            [1, 1, 1, 1, 1],
+            [1, 1, 1, 1, 1],
+            [1, 1, 1, 1, 1]
+        ]
+        .into_shape((5, 5, 1))
+        .unwrap();
+        let kernel = Kernel::new({
+            array![[0, 0, 0], [0, 1, 0], [0, 0, 0]]
+                .into_shape((3, 3))
+                .unwrap()
+        });
+        assert_eq!(
+            data.conv_2d(&kernel).unwrap(),
+            array![
+                [[1], [1], [1], [1], [1]],
+                [[1], [1], [1], [1], [1]],
+                [[1], [1], [1], [1], [1]],
+                [[1], [1], [1], [1], [1]],
+                [[1], [1], [1], [1], [1]]
+            ]
+        )
     }
 }
 
