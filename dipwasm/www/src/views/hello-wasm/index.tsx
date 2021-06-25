@@ -78,7 +78,7 @@ const HelloWasm = (props: any): JSX.Element => {
           <h3>Origin:</h3>
           <img
             ref={img}
-            src={`${process.env.PUBLIC_URL}/images/logo512.png`}
+            src={`${process.env.PUBLIC_URL}/images/lena_512.jpg`}
             style={{ width: '512px', height: '512px' }}
           ></img>
         </div>
