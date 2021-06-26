@@ -16,6 +16,9 @@ module.exports = override(
   }),
   (config, env) => {
     const wasmExtensionRegExp = /\.wasm$/
+    config.mode = 'development'
+    config.devtool = 'eval-source-map'
+    // config.options.devTools = 'eval-source-map'
 
     config.resolve.extensions.push('.wasm')
 

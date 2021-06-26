@@ -55,18 +55,9 @@ pub fn lets_papper_noise(data: ImageData) -> Result<ImageData, JsValue> {
             }
             if r > 0.995 {
                 a.slice_mut(s![y, x, ..]).fill(255 as u8);
-                //a[[y as usize, x as usize, 0]] = 42 as u8;
-                // a[[y as usize, x as usize, 0]] = 255 as u8;
-                // a[[y as usize, x as usize, 1]] = 255 as u8;
-                // a[[y as usize, x as usize, 2]] = 255 as u8;
-                // a[[y as usize, x as usize, 3]] = 255 as u8;
             } else {
                 a.slice_mut(s![y, x, ..])
                     .assign(&array![0 as u8, 0 as u8, 0 as u8, 255 as u8].slice(s![..]));
-                // a[[y as usize, x as usize, 0]] = 0 as u8;
-                // a[[y as usize, x as usize, 1]] = 0 as u8;
-                // a[[y as usize, x as usize, 2]] = 0 as u8;
-                // a[[y as usize, x as usize, 3]] = 255 as u8;
             }
         }
     }

@@ -19,6 +19,14 @@ export function makeImageData(data: ImageData): ImageData;
 */
 export function letsPapperNoise(data: ImageData): ImageData;
 /**
+* @param {Uint8ClampedArray} image_data
+* @param {number} width
+* @param {number} height
+* @param {number} kernel_size
+* @returns {ImageData}
+*/
+export function splatGaussianFilter(image_data: Uint8ClampedArray, width: number, height: number, kernel_size: number): ImageData;
+/**
 * Handler for `console.log` invocations.
 *
 * If a test is currently running it takes the `args` array and stringifies

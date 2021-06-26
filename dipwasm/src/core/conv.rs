@@ -35,15 +35,21 @@ where
         let mut conv_array: Array3<T> = Array::from_shape_fn(conv_shape, |_| Zero::zero());
         padding_array
             .slice_mut(s![
-                1..padding_shape[0] - padding,
-                1..padding_shape[1] - padding,
+                padding..padding_shape[0] - padding,
+                padding..padding_shape[1] - padding,
                 ..
             ])
             .assign(self);
         // Convolution start
         let raw_kernel = kernel.clone().into_shape([1, kernel.len()]).unwrap();
         let channels = shape[2];
+
         for y in padding..(padding_shape[0] - padding) {
+            if y % 100 == 0 {
+                unsafe {
+                    web_sys::console::log_1(&format!("conv now here{:?}", y).into());
+                }
+            }
             for x in padding..(padding_shape[1] - padding) {
                 for channel in 0..channels {
                     let raw_data = padding_array
@@ -55,10 +61,18 @@ where
                         .to_owned();
                     let raw_data = raw_data.into_shape([1, kernel.len()]).unwrap();
                     let conv = &raw_data * &raw_kernel;
+                    // let conv = conv
+                    //     .into_shape([kernel_shape[0], kernel_shape[1], channels])
+                    // .unwrap();
+                    // let conv = conv.sum_axis(Axis(0));
+                    // for channel in 0..channels {
                     conv_array[[y - padding, x - padding, channel]] = conv.sum();
+
+                    // }
                 }
             }
         }
+
         Ok(conv_array)
     }
 }
@@ -80,9 +94,15 @@ mod test {
         .into_shape((5, 5, 1))
         .unwrap();
         let kernel = Kernel::new({
-            array![[0, 0, 0], [0, 1, 0], [0, 0, 0]]
-                .into_shape((3, 3))
-                .unwrap()
+            array![
+                [0, 0, 1, 0, 0],
+                [0, 0, 1, 0, 0],
+                [0, 0, 1, 0, 0],
+                [0, 0, 1, 0, 0],
+                [0, 0, 1, 0, 0],
+            ]
+            .into_shape((5, 5))
+            .unwrap()
         });
         assert_eq!(
             data.conv_2d(&kernel).unwrap(),
@@ -93,6 +113,20 @@ mod test {
                 [[1], [1], [1], [1], [1]],
                 [[1], [1], [1], [1], [1]]
             ]
+        )
+    }
+
+    #[test]
+    fn conv_2d_with_4_channel() {
+        let data = Array::from_elem((512, 512, 4), 1.0);
+        let kernel = Kernel::new({
+            array![[0., 0., 0.], [0., 1., 0.], [0., 0., 0.]]
+                .into_shape((3, 3))
+                .unwrap()
+        });
+        assert_eq!(
+            data.conv_2d(&kernel).unwrap(),
+            Array::from_elem((512, 512, 4), 1.0)
         )
     }
 }

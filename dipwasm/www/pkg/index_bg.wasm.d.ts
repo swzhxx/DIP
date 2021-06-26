@@ -13,6 +13,7 @@ export function wasmalert(a: number, b: number): void;
 export function takeNumberSliceBySharedRef(a: number, b: number): void;
 export function makeImageData(a: number): number;
 export function letsPapperNoise(a: number): number;
+export function splatGaussianFilter(a: number, b: number, c: number, d: number): number;
 export function __wbg_wasmbindgentestcontext_free(a: number): void;
 export function wasmbindgentestcontext_new(): number;
 export function wasmbindgentestcontext_args(a: number, b: number, c: number): void;
