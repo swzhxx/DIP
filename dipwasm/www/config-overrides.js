@@ -7,6 +7,8 @@ module.exports = override(
     new WasmPackPlugin({
       crateDirectory: path.resolve(__dirname, './../'),
       outDir: path.resolve(__dirname, './pkg'),
+      forceMode: 'release',
+      outName: 'splatoon',
     })
   ),
   addWebpackAlias({

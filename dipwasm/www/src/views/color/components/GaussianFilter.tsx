@@ -5,7 +5,7 @@ import { wasm } from '@/wasm'
 import _ from 'lodash'
 export default (props: any): JSX.Element => {
   const [state, setState] = useState<any>({
-    kernel: '3',
+    kernel: '1',
   })
 
   const cRef = useRef<any>(null)
@@ -19,12 +19,15 @@ export default (props: any): JSX.Element => {
       //   512,
       //   512
       // )
-      imageData = wasm.splatGaussianFilter(
-        imageData.data,
-        imageData.width,
-        imageData.height,
-        Number(kernel)
-      )
+      if (kernel != 1) {
+        imageData = wasm.splatGaussianFilter(
+          imageData.data,
+          imageData.width,
+          imageData.height,
+          Number(kernel)
+        )
+      }
+
       cRef.current.putImageData(imageData)
     }, 200),
     [state.kernel]
@@ -49,7 +52,7 @@ export default (props: any): JSX.Element => {
     <div>
       <DatGui data={state} onUpdate={handleUpdateState}>
         <DatSelect
-          options={[3, 5, 7, 9]}
+          options={[1, 3, 5, 7, 9]}
           path='kernel'
           label='ConvWindowSize'
         ></DatSelect>
