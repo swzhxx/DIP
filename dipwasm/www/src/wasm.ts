@@ -1,5 +1,5 @@
-let wasm: typeof import('@pkg/splatoon')
+let Splat: typeof import('@pkg/splatoon')
 import('@pkg/splatoon').then((module) => {
-  wasm = module
+  Splat = module
 })
-export { wasm }
+export { Splat }

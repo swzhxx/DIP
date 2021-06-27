@@ -1,7 +1,7 @@
 import CanvasWithImg from '@/components/CanvasWithImg'
 import DatGui, { DatNumber, DatSelect } from 'react-dat-gui'
 import React, { useState, useRef, useCallback } from 'react'
-import { wasm } from '@/wasm'
+import { Splat } from '@/wasm'
 import _ from 'lodash'
 export default (props: any): JSX.Element => {
   const [state, setState] = useState<any>({
@@ -20,7 +20,7 @@ export default (props: any): JSX.Element => {
       //   512
       // )
       if (kernel != 1) {
-        imageData = wasm.splatGaussianFilter(
+        imageData = Splat.splatGaussianFilter(
           imageData.data,
           imageData.width,
           imageData.height,

@@ -1,6 +1,12 @@
-use std::f64::consts::{FRAC_PI_3, PI};
+use ndarray::{Array3, ArrayBase};
+use num_traits::{FromPrimitive, Num, NumAssign, NumAssignOps, ToPrimitive, Zero};
+use std::{
+    f64::consts::{FRAC_PI_3, PI},
+    ops::{Div, Sub},
+};
 use wasm_bindgen::prelude::*;
 pub type NormalizeColorSpace = (f64, f64, f64);
+use ndarray_stats::QuantileExt;
 
 #[wasm_bindgen]
 pub struct RGB(u8, u8, u8);
@@ -88,59 +94,101 @@ impl HSI {
     }
 }
 
-use wasm_bindgen_test::*;
-
-#[wasm_bindgen_test]
-fn rgb_to_hsi() {
-    let rgb = RGB::new(255, 0, 0);
-    let hsi: HSI = rgb.to_hsi();
-    let difference_h = (hsi.0 - 0.).abs();
-    let difference_s = (hsi.1 - 1.).abs();
-    let difference_i = (hsi.2 - 0.33333).abs();
-
-    assert!(difference_h < 1e-3);
-    assert!(difference_s < 1e-3);
-    assert!(difference_i < 1e-3);
-
-    let rgb = RGB::new(255, 255, 0);
-    let hsi: HSI = rgb.to_hsi();
-    let difference_h = (hsi.0 - 60. / 360.).abs();
-    let difference_s = (hsi.1 - 1.).abs();
-    let difference_i = (hsi.2 - 0.66667).abs();
-
-    assert!(difference_h < 1e-3);
-    assert!(difference_s < 1e-3);
-    assert!(difference_i < 1e-3);
-
-    let rgb = RGB::new(255, 255, 255);
-    let hsi: HSI = rgb.to_hsi();
-    let difference_h = (hsi.0 - 0.25).abs();
-    let difference_s = (hsi.1 - 0.).abs();
-    let difference_i = (hsi.2 - 1.).abs();
-
-    assert!(difference_h < 1e-3);
-    assert!(difference_s < 1e-3);
-    assert!(difference_i < 1e-3);
+pub fn normalize_color(v: &Array3<f64>) -> Array3<u8> {
+    unsafe {
+        web_sys::console::log_1(&format!("normalize_color_a").into());
+        web_sys::console::log_1(&format!("normalize_color_a.{:?}",v.max_skipnan()).into());
+    }
+    let max = v.max_skipnan() + 0.0000000001;
+    unsafe {
+        web_sys::console::log_1(&format!("normalize_color_b").into());
+    }
+    let min = v.min_skipnan();
+    unsafe {
+        web_sys::console::log_1(&format!("normalize_color_c").into());
+    }
+    let mean = v.mean().unwrap();
+    unsafe {
+        web_sys::console::log_1(&format!("normalize_color_d").into());
+    }
+    let offset = if 0. - *min > 0. { 0. - *min } else { 0. };
+    unsafe {
+        web_sys::console::log_1(&format!("normalize_color").into());
+    }
+    v.map(|v| (((*v + offset) / max) * 255.) as u8)
 }
 
-#[wasm_bindgen_test]
-fn his_to_rgb() {
-    let hsi = HSI::new(0., 1., 0.333333337);
+#[cfg(test)]
+mod test {
+    use super::normalize_color;
+    use super::*;
+    use ndarray::prelude::*;
+    use wasm_bindgen_test::*;
+    #[wasm_bindgen_test]
+    fn test_normalize_color() {
+        let a = array![[[1.], [1.], [1.]], [[1.], [1.], [1.]], [[1.], [1.], [1.]]];
+        assert_eq!(
+            normalize_color(&a),
+            array![
+                [[254], [254], [254]],
+                [[254], [254], [254]],
+                [[254], [254], [254]]
+            ]
+        )
+    }
 
-    let rgb = hsi.to_rgb();
-    assert_eq!(rgb.0, 255);
-    assert_eq!(rgb.1, 0);
-    assert_eq!(rgb.2, 0);
+    #[wasm_bindgen_test]
+    fn rgb_to_hsi() {
+        let rgb = RGB::new(255, 0, 0);
+        let hsi: HSI = rgb.to_hsi();
+        let difference_h = (hsi.0 - 0.).abs();
+        let difference_s = (hsi.1 - 1.).abs();
+        let difference_i = (hsi.2 - 0.33333).abs();
 
-    let hsi = HSI::new(1. / 6., 1., 0.66666666667);
-    let rgb = hsi.to_rgb();
-    assert_eq!(rgb.0, 255);
-    assert_eq!(rgb.1, 255);
-    assert_eq!(rgb.2, 0);
+        assert!(difference_h < 1e-3);
+        assert!(difference_s < 1e-3);
+        assert!(difference_i < 1e-3);
 
-    let hsi = HSI::new(0., 0., 1.);
-    let rgb = hsi.to_rgb();
-    assert_eq!(rgb.0, 255);
-    assert_eq!(rgb.1, 255);
-    assert_eq!(rgb.2, 255);
+        let rgb = RGB::new(255, 255, 0);
+        let hsi: HSI = rgb.to_hsi();
+        let difference_h = (hsi.0 - 60. / 360.).abs();
+        let difference_s = (hsi.1 - 1.).abs();
+        let difference_i = (hsi.2 - 0.66667).abs();
+
+        assert!(difference_h < 1e-3);
+        assert!(difference_s < 1e-3);
+        assert!(difference_i < 1e-3);
+
+        let rgb = RGB::new(255, 255, 255);
+        let hsi: HSI = rgb.to_hsi();
+        let difference_h = (hsi.0 - 0.25).abs();
+        let difference_s = (hsi.1 - 0.).abs();
+        let difference_i = (hsi.2 - 1.).abs();
+
+        assert!(difference_h < 1e-3);
+        assert!(difference_s < 1e-3);
+        assert!(difference_i < 1e-3);
+    }
+
+    #[wasm_bindgen_test]
+    fn his_to_rgb() {
+        let hsi = HSI::new(0., 1., 0.333333337);
+
+        let rgb = hsi.to_rgb();
+        assert_eq!(rgb.0, 255);
+        assert_eq!(rgb.1, 0);
+        assert_eq!(rgb.2, 0);
+
+        let hsi = HSI::new(1. / 6., 1., 0.66666666667);
+        let rgb = hsi.to_rgb();
+        assert_eq!(rgb.0, 255);
+        assert_eq!(rgb.1, 255);
+        assert_eq!(rgb.2, 0);
+
+        let hsi = HSI::new(0., 0., 1.);
+        let rgb = hsi.to_rgb();
+        assert_eq!(rgb.0, 255);
+        assert_eq!(rgb.1, 255);
+        assert_eq!(rgb.2, 255);
+    }
 }

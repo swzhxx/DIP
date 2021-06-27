@@ -1,12 +1,12 @@
 import React, { useRef, useState } from 'react'
 import { Button } from 'antd'
-import { wasm } from '@/wasm'
+import { Splat } from '@/wasm'
 
 // let wasm = await import('@dipwasm')
 
 const HelloWasm = (props: any): JSX.Element => {
   const handleClick = () => {
-    return wasm.wasmalert('wasmlog banana')
+    return Splat.wasmalert('wasmlog banana')
   }
 
   const [showPapeerNoise, setShowPapperNoise] = useState<Boolean>(false)
@@ -14,8 +14,8 @@ const HelloWasm = (props: any): JSX.Element => {
   const handleSliceSharedRef = () => {
     setShowPapperNoise(false)
     let a = new Uint8Array(200)
-    wasm.takeNumberSliceBySharedRef(a)
-    wasm.wasmalert('请查看Console')
+    Splat.takeNumberSliceBySharedRef(a)
+    Splat.wasmalert('请查看Console')
     console.log(a)
   }
 
@@ -29,7 +29,7 @@ const HelloWasm = (props: any): JSX.Element => {
     let height = 100
     let total = width * height * 4
     let imageData = new ImageData(new Uint8ClampedArray(total), width, height)
-    imageData = wasm.makeImageData(imageData)
+    imageData = Splat.makeImageData(imageData)
     canvas?.current?.getContext('2d')?.putImageData(imageData, 0, 0)
   }
 
@@ -42,7 +42,7 @@ const HelloWasm = (props: any): JSX.Element => {
       }
       let imgElement: HTMLImageElement = img.current as HTMLImageElement
       ctx.drawImage(imgElement, 0, 0)
-      let imageData = wasm.letsPapperNoise(ctx.getImageData(0, 0, 512, 512))
+      let imageData = Splat.letsPapperNoise(ctx.getImageData(0, 0, 512, 512))
       ctx.putImageData(imageData, 0, 0)
     })
   }
