@@ -39,6 +39,14 @@ impl RGB {
         HSI::new(h, s, i)
     }
 
+    #[wasm_bindgen]
+    pub fn to_yuv(&self) -> YUV {
+        let (r, g, b) = self.normalize();
+        let y = r * 0.299 + 0.587 * g + 0.114 * b;
+        let u = -0.147 * r - 0.289 * g + 0.436 * b;
+        let v = 0.615 * r - 0.515 * g - 0.1 * b;
+        YUV::new(y, u, v)
+    }
     fn normalize(&self) -> NormalizeColorSpace {
         let r = self.0 as f64;
         let g = self.1 as f64;
@@ -97,7 +105,7 @@ impl HSI {
 pub fn normalize_color(v: &Array3<f64>) -> Array3<u8> {
     unsafe {
         web_sys::console::log_1(&format!("normalize_color_a").into());
-        web_sys::console::log_1(&format!("normalize_color_a.{:?}",v.max_skipnan()).into());
+        web_sys::console::log_1(&format!("normalize_color_a.{:?}", v.max_skipnan()).into());
     }
     let max = v.max_skipnan() + 0.0000000001;
     unsafe {
@@ -116,6 +124,22 @@ pub fn normalize_color(v: &Array3<f64>) -> Array3<u8> {
         web_sys::console::log_1(&format!("normalize_color").into());
     }
     v.map(|v| (((*v + offset) / max) * 255.) as u8)
+}
+
+#[wasm_bindgen]
+pub struct YUV(f64, f64, f64);
+
+impl YUV {
+    pub fn new(y: f64, u: f64, v: f64) -> Self {
+        YUV(y, u, v)
+    }
+    pub fn to_rgb(&self) -> RGB {
+        let YUV(y, u, v) = self;
+        let r = (y + 1.140 * v) as u8;
+        let g = (y - 0.394 * u - 0.581 * v) as u8;
+        let b = (y + 2.032 * u) as u8;
+        RGB::new(r * 255, g * 255, b * 255)
+    }
 }
 
 #[cfg(test)]
