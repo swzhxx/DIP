@@ -3,7 +3,7 @@ use ndarray::Array;
 use num_traits::*;
 use std::f64::consts::PI;
 
-pub fn dct2d(data: Array2<f64>) -> Array2<f64> {
+pub fn dct2d(data: &Array2<f64>) -> Array2<f64> {
     let shape = data.shape();
     let v = shape[0];
     let u = shape[1];
@@ -26,7 +26,7 @@ pub fn dct2d(data: Array2<f64>) -> Array2<f64> {
         M
     };
 
-    dct_matrix(v).dot(&data).dot(&dct_matrix(v))
+    dct_matrix(v).dot(data).dot(&dct_matrix(v))
 }
 
 fn dct_transform_matrix() -> Array2<f64> {
@@ -42,9 +42,33 @@ fn dct_transform_matrix() -> Array2<f64> {
     })
 }
 
-pub fn dct_2d_by_84_blocks(data: &Array2<f64>) -> Array2<f64> {
+pub fn dct_2d_by_64_blocks(data: &Array2<f64>) -> Array2<f64> {
     let size = 8.;
     let T = dct_transform_matrix();
+
+    let shape = data.shape();
+    //割块
+    let h_blocks = (shape[0] as f64 / size).ceil() as usize;
+    let w_blocks = (shape[1] as f64 / size).ceil() as usize;
+
+    let mut res: Array2<f64> = Array::from_elem((shape[0], shape[1]), 0.);
+
+    for h_count in 0..h_blocks {
+        for w_count in 0..w_blocks {
+            let start_h = h_count * 8;
+            let start_w = w_count * 8;
+            let s = data.slice(s![start_h..(start_h + 8), start_w..(start_w + 8)]);
+            res.slice_mut(s![start_h..(start_h + 8), start_w..(start_w + 8)])
+                .assign(&(&s.dot(&T)));
+        }
+    }
+    res
+}
+
+pub fn inverse_dct_2d_by_64_blocks(data: &Array2<f64>) -> Array2<f64> {
+    let size = 8.;
+    let T = dct_transform_matrix();
+    let T = T.t();
 
     let shape = data.shape();
     //割块
@@ -86,9 +110,9 @@ mod test {
         assert!(abs.sum() < 0.01);
     }
     #[test]
-    fn test_dct_2d_by_84_blocks() {
+    fn test_dct_2d_by_64_blocks() {
         let data = Array2::from_shape_fn((8, 8), |(j, i)| if j == i { 1. } else { 0. });
-        let dct_res = dct_2d_by_84_blocks(&data);
+        let dct_res = dct_2d_by_64_blocks(&data);
 
         let dct_transform_matrix = dct_transform_matrix();
         let dct_res2 = dct_transform_matrix.dot(&data);

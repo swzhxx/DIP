@@ -57,9 +57,7 @@ pub fn splat_color_edge(
     let image_data = Array::from_shape_vec((width, height, 4), image_data).unwrap();
     let conv_y = image_data.conv_2d(&sobel_y).unwrap();
     let conv_x = image_data.conv_2d(&sobel_x).unwrap();
-    unsafe {
-        web_sys::console::log_1(&format!("{:?}", conv_y).into());
-    }
+   
 
     let mut theta = Array::from_elem((width, height), 0.);
     let mut f = Array::from_elem((width, height), 0.);
@@ -83,12 +81,7 @@ pub fn splat_color_edge(
             .for_each(|w, &xx, &yy, &xy| {
                 *w = 1. / 2. * (2. * xy / (xx - yy + 0.00000000001)).atan();
             });
-        unsafe {
-            web_sys::console::log_1(&format!("theta , {:?}", theta.shape()).into());
-            web_sys::console::log_1(&format!("gxx , {:?}", gxx.shape()).into());
-            web_sys::console::log_1(&format!("gyy , {:?}", gyy.shape()).into());
-            web_sys::console::log_1(&format!("gxy , {:?}", gxy.shape()).into());
-        }
+      
         Zip::from(&mut f)
             .and(&gxx)
             .and(&gyy)
@@ -100,9 +93,7 @@ pub fn splat_color_edge(
                 .pow(1. / 2.)
             });
 
-        unsafe {
-            web_sys::console::log_1(&format!("f shape{:?}", f.shape()).into());
-        }
+       
     }
 
     // 填充 f的维度
@@ -116,9 +107,7 @@ pub fn splat_color_edge(
         web_sys::console::log_1(&format!("extra").into());
     }
     let mut f = normalize_color(&f.insert_axis(Axis(2)));
-    unsafe {
-        web_sys::console::log_1(&format!("f {:?} ", f).into());
-    }
+    
     f.append(Axis(2), extra.slice(s![.., .., ..])).unwrap();
     f.append(Axis(2), extra.slice(s![.., .., ..])).unwrap();
     f.append(
@@ -129,6 +118,5 @@ pub fn splat_color_edge(
 
     let image_data: Vec<u8> = f.iter().map(|val| (*val)).collect();
 
-    unsafe { web_sys::console::log_1(&format!("{:?}", image_data).into()) }
     ImageData::new_with_u8_clamped_array_and_sh(Clamped(&image_data), width as u32, height as u32)
 }

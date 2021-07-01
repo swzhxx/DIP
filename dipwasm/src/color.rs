@@ -9,7 +9,7 @@ pub type NormalizeColorSpace = (f64, f64, f64);
 use ndarray_stats::QuantileExt;
 
 #[wasm_bindgen]
-pub struct RGB(u8, u8, u8);
+pub struct RGB(pub u8, pub u8, pub u8);
 
 #[wasm_bindgen]
 impl RGB {
@@ -57,7 +57,7 @@ impl RGB {
 }
 
 #[wasm_bindgen]
-pub struct HSI(f64, f64, f64);
+pub struct HSI(pub f64, pub f64, pub f64);
 
 #[wasm_bindgen]
 impl HSI {
@@ -127,7 +127,7 @@ pub fn normalize_color(v: &Array3<f64>) -> Array3<u8> {
 }
 
 #[wasm_bindgen]
-pub struct YUV(f64, f64, f64);
+pub struct YUV(pub f64, pub f64, pub f64);
 
 impl YUV {
     pub fn new(y: f64, u: f64, v: f64) -> Self {

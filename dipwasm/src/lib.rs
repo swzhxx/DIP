@@ -72,3 +72,5 @@ pub mod color;
 pub mod filter;
 
 pub mod core;
+
+pub mod compression;
