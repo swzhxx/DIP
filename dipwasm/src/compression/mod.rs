@@ -48,13 +48,13 @@ pub fn splat_jpeg(
     let times = width / 8;
 
     for time in 0..times * times - 1 {
-        QY.append(Axis(0), qy().slice(s![.., ..]));     
-    
+        QY.append(Axis(0), qy().slice(s![.., ..]));
+
         QC.append(Axis(0), qc().slice(s![.., ..]));
     }
     unsafe {
-      web_sys::console::log_1(&format!("{:?}",QY.shape()).into());
-  }
+        web_sys::console::log_1(&format!("{:?}", QY.shape()).into());
+    }
     QY = QY.into_shape([width, height]).unwrap();
     QC = QC.into_shape([width, height]).unwrap();
     let image_data = Array::from_shape_vec(
@@ -119,15 +119,11 @@ pub fn splat_jpeg(
     let image_data_y = dct_2d_by_64_blocks(&image_data.slice(s![.., .., 0]).mapv(|v| v));
     let image_data_u = dct_2d_by_64_blocks(&image_data.slice(s![.., .., 1]).mapv(|v| v));
     let image_data_v = dct_2d_by_64_blocks(&image_data.slice(s![.., .., 2]).mapv(|v| v));
-    unsafe {
-        web_sys::console::log_1(
-            &format!("1.3,{:?},{:?}", image_data_y.shape(), &QY.shape()).into(),
-        );
-    }
+
     // Quantitative data
-    let by = (&image_data_y / &QY).mapv(|val| val.round());
-    let bu = (&image_data_u / &QC).mapv(|val| val.round());
-    let bv = (&image_data_v / &QC).mapv(|val| val.round());
+    let by = (&image_data_y / &QY).mapv(|val| val);
+    let bu = (&image_data_u / &QC).mapv(|val| val);
+    let bv = (&image_data_v / &QC).mapv(|val| val);
 
     // inverse
     unsafe {
@@ -137,8 +133,9 @@ pub fn splat_jpeg(
     let iby = (&by * &QY).mapv(|val| val as f64);
     let ibu = (&bu * &QC).mapv(|val| val as f64);
     let ibv = (&bv * &QC).mapv(|val| val as f64);
+  
     unsafe {
-        web_sys::console::log_1(&format!("1.5").into());
+        web_sys::console::log_1(&format!("{:?},{:?},{:?}", by, bu, bv).into());
     }
     //inverse dct
     let image_data_y = inverse_dct_2d_by_64_blocks(&iby);
@@ -148,37 +145,36 @@ pub fn splat_jpeg(
         web_sys::console::log_1(&format!("1.6").into());
     }
     //inverse imagedata
-    let mut image_data = Array::from_elem([width, height, 4], 0.);
+    let mut image_data = Array::from_elem([width, height, 4], 255.);
     image_data.slice_mut(s![.., .., 0]).assign(&image_data_y);
     image_data.slice_mut(s![.., .., 1]).assign(&image_data_u);
     image_data.slice_mut(s![.., .., 2]).assign(&image_data_v);
-    unsafe {
-        web_sys::console::log_1(&format!("2,{:?}",image_data.shape()).into());
-    }
+
     //to rgb
     for y in 0..height {
         for x in 0..width {
-            let mut pixel_slice = image_data.slice_mut(s![y, x, ..]);
-            let yuv = YUV::new(pixel_slice[0], pixel_slice[1], pixel_slice[1]);
+            let mut pixel_slice = image_data.slice_mut(s![y, x, 0..3]);
+
+            let yuv = YUV::new(pixel_slice[0], pixel_slice[1], pixel_slice[2]);
+
             let rgb = yuv.to_rgb();
             pixel_slice.assign(&array![rgb.0 as f64, rgb.1 as f64, rgb.2 as f64].slice(s![..]));
         }
     }
     unsafe {
-      web_sys::console::log_1(&format!("2.1").into());
-  }
+        web_sys::console::log_1(&format!("2.1").into());
+    }
     let mut image_data = image_data.mapv(|val| val as u8);
     unsafe {
-      web_sys::console::log_1(&format!("2.5").into());
-  }
-    // fill aplpha
-    image_data.append(
-        Axis(2),
-        Array::from_elem([width, height, 1], 255).slice(s![.., .., ..]),
-    );
+        web_sys::console::log_1(&format!("2.5").into());
+    }
+
     unsafe {
         web_sys::console::log_1(&format!("3").into());
     }
     let image_data: Vec<u8> = image_data.iter().map(|val| *val).collect();
     ImageData::new_with_u8_clamped_array_and_sh(Clamped(&image_data), width as u32, height as u32)
 }
+
+#[cfg(test)]
+mod test {}

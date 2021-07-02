@@ -9,6 +9,7 @@ pub type NormalizeColorSpace = (f64, f64, f64);
 use ndarray_stats::QuantileExt;
 
 #[wasm_bindgen]
+#[derive(Debug)]
 pub struct RGB(pub u8, pub u8, pub u8);
 
 #[wasm_bindgen]
@@ -127,6 +128,7 @@ pub fn normalize_color(v: &Array3<f64>) -> Array3<u8> {
 }
 
 #[wasm_bindgen]
+#[derive(Debug)]
 pub struct YUV(pub f64, pub f64, pub f64);
 
 impl YUV {
@@ -135,10 +137,10 @@ impl YUV {
     }
     pub fn to_rgb(&self) -> RGB {
         let YUV(y, u, v) = self;
-        let r = (y + 1.140 * v) as u8;
-        let g = (y - 0.394 * u - 0.581 * v) as u8;
-        let b = (y + 2.032 * u) as u8;
-        RGB::new(r * 255, g * 255, b * 255)
+        let r = (y + 1.140 * v);
+        let g = (y - 0.394 * u - 0.581 * v);
+        let b = (y + 2.032 * u);
+        RGB::new((r * 255.) as u8, (g * 255.) as u8, (b * 255.) as u8)
     }
 }
 
