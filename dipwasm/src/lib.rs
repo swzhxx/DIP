@@ -74,3 +74,5 @@ pub mod filter;
 pub mod core;
 
 pub mod compression;
+
+pub mod segmentation;
