@@ -4,6 +4,7 @@ import { HashRouter as Router, Route, Switch, Link } from 'react-router-dom'
 import HelloWasm from '@/views/hello-wasm/index'
 import Color from '@/views/color/index'
 import Jpeg from '@/views/jpeg/index'
+import Segmentation from '@/views/segmentation/index'
 import 'react-dat-gui/dist/index.css'
 function App() {
   return (
@@ -18,6 +19,9 @@ function App() {
             <Link style={{ marginLeft: '5px' }} to='/jpeg'>
               jpeg
             </Link>
+            <Link style={{ marginLeft: '5px' }} to='/Segmentation'>
+              Segmentation
+            </Link>
           </ul>
         </div>
         <div style={{ height: '1px', color: '#999' }}></div>
@@ -30,6 +34,9 @@ function App() {
           </Route>
           <Route exact path='/jpeg'>
             <Jpeg></Jpeg>
+          </Route>
+          <Route exact path='/Segmentation'>
+            <Segmentation></Segmentation>
           </Route>
         </Switch>
       </Router>
