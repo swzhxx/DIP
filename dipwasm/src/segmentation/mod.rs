@@ -13,6 +13,7 @@ use rs_graph::{
 };
 use wasm_bindgen::{prelude::*, Clamped};
 use web_sys::ImageData;
+use crate::filter::splat_gaussian_filter;
 const MAXIUM: usize = 100000000;
 
 // use petgraph::{
@@ -107,7 +108,7 @@ pub fn graph_cuts(
     height: usize,
     mut front: Uint32Array,
     mut background: Uint32Array,
-) -> Result<ImageData, JsValue> {
+) -> Result<Uint32Array, JsValue> {
     unsafe {
         web_sys::console::log_1(&format!("start0").into());
     }
@@ -116,7 +117,7 @@ pub fn graph_cuts(
                             next: ArrayBase<ViewRepr<&u8>, Dim<[usize; 1]>>|
      -> f64 {
         let t: Array1<f64> = (&current - &next).map(|val| (*val as f64).pow(2.));
-        let weight = 1. / (t.sum() + 0.00001);
+        let weight = 1. / (t.sum().sqrt() + 0.00001);
         // unsafe {
         //     web_sys::console::log_1(&format!("weight {:?}", weight).into());
         // }
@@ -190,14 +191,14 @@ pub fn graph_cuts(
                 //     web_sys::console::log_1(&format!("anode {:?}", anode).into());
                 // }
                 upper.push(MAXIUM as f64);
-                if anode == source {
-                    builder_g.add_edge(anode, node);
-                    upper.push(0.);
-                    builder_g.add_edge(node, sink);
-                } else {
+                if node == source {
                     builder_g.add_edge(node, anode);
-                    upper.push(0.);
-                    builder_g.add_edge(source, node);
+                    // upper.push(0.);
+                    // builder_g.add_edge(node, sink);
+                } else {
+                    builder_g.add_edge(anode, node);
+                    // upper.push(0.);
+                    // builder_g.add_edge(source, node);
                 }
 
                 // upper.push(MAXIUM as f64);
@@ -224,50 +225,33 @@ pub fn graph_cuts(
     let g = builder_g.into_graph();
 
     // maxflow mincut
-    let (value, flow, mut mincut) = dinic(&g, source, sink, |e| (upper[e.index()] * 1000.) as u32);
+    let (value, flow, mut mincut) = dinic(&g, source, sink, |e| (upper[e.index()] * 10000.) as u32 );
+    unsafe {
+        web_sys::console::log_1(&format!("value : {:?},mincurt.len:{:?}", value, mincut.len()).into());
+    }
+    let mut points: Vec<u32> = vec![];
 
-    let mut fronts = vec![];
-    // struct Dfs<'s, 'r, 'a> {
-    //     f: &'s dyn Fn(&'r Dfs, &'a VecGraph<u32>, Node, &'a mut Vec<(usize, usize)>),
-    // }
+    let getxy = |n: &Node| -> (u32, u32) {
+        let index = n.index();
+        let y = (index / width) as u32;
+        let x = (index % width) as u32;
 
-    // let dfs = Dfs {
-    //     f: &|dfs: &Dfs, g: &VecGraph<u32>, startNode: Node, c: &mut Vec<(usize, usize)>| {
-    //         g.outedges(source).for_each(|(e, n)| {
-    //             {
-    //                 c.push((g.node_id(startNode), g.node_id(n)));
-    //             }
-    //             (dfs.f)(dfs, g, n, c)
-    //         });
-    //     },
-    // };
+        (y, x)
+    };
 
-    // (dfs.f)(&dfs, &g, source, &mut fronts);
-
-    // let dfs = |g: &VecGraph<u32>, startNode: Node, c: &mut Vec<(usize, usize)>| {
-    //     g.outedges(source).for_each(|(e, n)| {
-    //         {
-    //             fronts.push((g.node_id(startNode), g.node_id(n)));
-    //         }
-    //         dfs(&g, n, fronts)
-    //     });
-    // };
-    // dfs(&g, source, &mut fronts);
-    // g.outedges(source)
-    //     .for_each(|(e, n)| dfs(&g, n, &mut fronts));
-
-    // let mut builder = VecGraphBuilder::with_capacities(0, 0);
-    // g.nodes().for_each(|n| {
-    //     // let nid = g.node2id(n);
-    //     builder.add_node();
-    // });
-    // g.edges()
-    //     .filter(|e| (upper[e.index()]).abs() > 0.0001)
-    //     .for_each(|e| builder.add_edge(e));
-
-    ImageData::new_with_u8_clamped_array_and_sh(
-        Clamped(&vec![0 as u8, 0 as u8, 0 as u8, 0 as u8]),
-        1,
-        1,
-    )
+    mincut.iter().for_each(|n| {
+        if n.index() == source.index() {
+            return;
+        } else {
+            let (y, x) = getxy(n);
+            points.push(y);
+            points.push(x);
+        }
+    });
+    Ok(Uint32Array::from(&points[..]))
+    // ImageData::new_with_u8_clamped_array_and_sh(
+    //     Clamped(&vec![0 as u8, 0 as u8, 0 as u8, 0 as u8]),
+    //     1,
+    //     1,
+    // )
 }
