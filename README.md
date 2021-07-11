@@ -27,7 +27,7 @@
 
 [子豪 cs231n 精讲](https://www.bilibili.com/video/BV1K7411W7So)
 
-在下一期中打算使用 Rust/Webassembly 实现
+二期使用 Rust/Webassembly 实现
 
 1. 彩色图像处理
 2. 图像压缩
