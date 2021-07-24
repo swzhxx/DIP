@@ -5,7 +5,7 @@
 这个仓库会记录下我读书的笔记。
 按照自己对书本中原理的理解，挑选书中的例子使用 Python 语言进行实现。
 
-在这一期中使用 python/jupyter 实现了关于
+在一期中使用 python/jupyter 实现了关于
 
 1. 频率域滤波
 2. 图像复原与重建
@@ -35,6 +35,13 @@
 4. 图像分割(graphcut / grabcut / snake ? )
 
 的部分内容
+
+```
+cd dipwasm 
+cd www
+npm install 
+npm run start
+```
 
 三期计划：
 三维重建
