@@ -1,3 +1,8 @@
 .vscode
 dipwasm/target 
 node_modules
+*.out
+CMakeFiles
+cmake_install.cmake
+CMakeCache.txt
+Makefile
