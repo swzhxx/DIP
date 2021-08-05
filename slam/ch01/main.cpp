@@ -1,8 +1,6 @@
-#include<iostream>
-
-using namespace std;
+#include "Hello.h"
 
 int main(int argc , char** argv){
-  cout<<"Hello SLAM!"<<endl;
+  SayHello();
   return 0;
 }
