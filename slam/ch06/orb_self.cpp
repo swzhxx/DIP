@@ -384,3 +384,29 @@ vector<DescType> &desciptors){
   }
   cout << "bad/total: " << bad_points << "/" << keypoints.size() << endl;
 }
+
+// brute-force matching
+void BfMatch(const vector<DescType> &desc1 , const vector<DescType> , &desc2 , 
+vector<cv::DMatch> &matches){
+  const int d_max = 40 ; 
+  for (size_t i1 = 0 ; i1<desc1.size() ; ++ i1){
+    if(desc1[i1].empty()) {
+      continue;
+    }
+    cv::DMatch m{i1, 0, 256};
+    for (size_t i2 = 0; i2 < desc2.size() ; ++i2){
+      if (desc2[i2].empty()) continue;
+      int distance = 0 ; 
+      for (int k = 0; k < 8; k++) {
+        distance += _mm_popcnt_u32(desc1[i1][k] ^ desc2[i2][k]);
+      }
+      if (distance < d_max && distance < m.distance) {
+        m.distance = distance;
+        m.trainIdx = i2;
+      }
+    }
+    if (m.distance < d_max) {
+      matches.push_back(m);
+    }
+  }
+}
