@@ -1,12 +1,20 @@
+//
+// Created by xiang on 18-11-25.
+//
+
 #include <opencv2/opencv.hpp>
 #include <string>
 #include <nmmintrin.h>
 #include <chrono>
 
-string first_file = './1.png';
-string second_file = './2.png';
+using namespace std;
 
-typedef vector(uint32_t) DescType ; 
+// global variables
+string first_file = "./1.png";
+string second_file = "./2.png";
+
+// 32 bit unsigned int, will have 8, 8x32=256
+typedef vector<uint32_t> DescType; // Descriptor type
 
 /**
  * compute descriptor of orb keypoints
@@ -27,11 +35,13 @@ void ComputeORB(const cv::Mat &img, vector<cv::KeyPoint> &keypoints, vector<Desc
  */
 void BfMatch(const vector<DescType> &desc1, const vector<DescType> &desc2, vector<cv::DMatch> &matches);
 
-int main(int argc , char **argv){
-  cv::Mat first_image = cv::imread(first_file , 0);
-  cv::Mat second_image = cv::imread(second_file , 0);
+int main(int argc, char **argv) {
+
+  // load image
+  cv::Mat first_image = cv::imread(first_file, 0);
+  cv::Mat second_image = cv::imread(second_file, 0);
   assert(first_image.data != nullptr && second_image.data != nullptr);
-  
+
   // detect FAST keypoints1 using threshold=40
   chrono::steady_clock::time_point t1 = chrono::steady_clock::now();
   vector<cv::KeyPoint> keypoints1;
@@ -39,26 +49,25 @@ int main(int argc , char **argv){
   vector<DescType> descriptor1;
   ComputeORB(first_image, keypoints1, descriptor1);
 
-  // same for the second 
-  vector<cv::KeyPoint> keypoints2 ; 
+  // same for the second
+  vector<cv::KeyPoint> keypoints2;
   vector<DescType> descriptor2;
-  cv::FAST(second_image , keypoints2, descriptor2);
-  ComputeORB(second_image , keypoints2 , descriptor2);
-
+  cv::FAST(second_image, keypoints2, 40);
+  ComputeORB(second_image, keypoints2, descriptor2);
   chrono::steady_clock::time_point t2 = chrono::steady_clock::now();
   chrono::duration<double> time_used = chrono::duration_cast<chrono::duration<double>>(t2 - t1);
   cout << "extract ORB cost = " << time_used.count() << " seconds. " << endl;
 
-
-  // find matches 
+  // find matches
   vector<cv::DMatch> matches;
-  t1 = chrono::steady_clock::now(); 
-  BfMatch(descriptor1 , descriptor2 , matches);
+  t1 = chrono::steady_clock::now();
+  BfMatch(descriptor1, descriptor2, matches);
+  t2 = chrono::steady_clock::now();
   time_used = chrono::duration_cast<chrono::duration<double>>(t2 - t1);
   cout << "match ORB cost = " << time_used.count() << " seconds. " << endl;
   cout << "matches: " << matches.size() << endl;
 
-    // plot the matches
+  // plot the matches
   cv::Mat image_show;
   cv::drawMatches(first_image, keypoints1, second_image, keypoints2, matches, image_show);
   cv::imshow("matches", image_show);
@@ -69,6 +78,7 @@ int main(int argc , char **argv){
   return 0;
 }
 
+// -------------------------------------------------------------------------------------------------- //
 // ORB pattern
 int ORB_pattern[256 * 4] = {
   8, -3, 9, 5/*mean (0), correlation (0)*/,
@@ -329,39 +339,36 @@ int ORB_pattern[256 * 4] = {
   -1, -6, 0, -11/*mean (0.127148), correlation (0.547401)*/
 };
 
-void computeORB(const cv::Mat &img , vector<cv::KeyPoint> &keypoints , 
-vector<DescType> &desciptors){
-  const int half_patch_size = 8 ; 
-  const int half_boundary = 16 ; 
-  int bad_points = 0 ; 
-  for (auto &kp : keypoints){
-    if(kp.pt.x < half_boundary || 
-    kp.pt.y < half_boundary || 
-    kp.pt.x >= img.cols - half_boundary || 
-    kp.pt.y >= img.ros - half_boundary){
-      bad_points ++ ;
-      desciptors.push_back({});
-      continue ; 
+// compute the descriptor
+void ComputeORB(const cv::Mat &img, vector<cv::KeyPoint> &keypoints, vector<DescType> &descriptors) {
+  const int half_patch_size = 8;
+  const int half_boundary = 16;
+  int bad_points = 0;
+  for (auto &kp: keypoints) {
+    if (kp.pt.x < half_boundary || kp.pt.y < half_boundary ||
+        kp.pt.x >= img.cols - half_boundary || kp.pt.y >= img.rows - half_boundary) {
+      // outside
+      bad_points++;
+      descriptors.push_back({});
+      continue;
     }
 
-    // 准备计算质心
-    float m01 = 0 , m10 = 0;
-    for(int dx = -half_patch_size; dx <half_patch_size ; ++dx){
-      for (int dy = -half_patch_size; dy<half_patch_size ; ++dy){
-        uchar pixel = img.at<uchar>(kp.pt.y + dy , kp.pt.x + dx);
-        m10 += dx * pixel ; 
-        m01 += dy * pixel ; 
+    float m01 = 0, m10 = 0;
+    for (int dx = -half_patch_size; dx < half_patch_size; ++dx) {
+      for (int dy = -half_patch_size; dy < half_patch_size; ++dy) {
+        uchar pixel = img.at<uchar>(kp.pt.y + dy, kp.pt.x + dx);
+        m10 += dx * pixel;
+        m01 += dy * pixel;
       }
     }
 
-    // angle should be arc tan(m01 / m10)
-    float m_sqrt = sqrt(m01 * m01 + m10 * m10);
-    float sin_theta = m01 / m_sqrt ; 
+    // angle should be arc tan(m01/m10);
+    float m_sqrt = sqrt(m01 * m01 + m10 * m10) + 1e-18; // avoid divide by zero
+    float sin_theta = m01 / m_sqrt;
     float cos_theta = m10 / m_sqrt;
 
-    DescType desc(8 , 0 );
-
     // compute the angle of this point
+    DescType desc(8, 0);
     for (int i = 0; i < 8; i++) {
       uint32_t d = 0;
       for (int k = 0; k < 32; k++) {
@@ -382,21 +389,20 @@ vector<DescType> &desciptors){
     }
     descriptors.push_back(desc);
   }
+
   cout << "bad/total: " << bad_points << "/" << keypoints.size() << endl;
 }
 
 // brute-force matching
-void BfMatch(const vector<DescType> &desc1 , const vector<DescType> , &desc2 , 
-vector<cv::DMatch> &matches){
-  const int d_max = 40 ; 
-  for (size_t i1 = 0 ; i1<desc1.size() ; ++ i1){
-    if(desc1[i1].empty()) {
-      continue;
-    }
+void BfMatch(const vector<DescType> &desc1, const vector<DescType> &desc2, vector<cv::DMatch> &matches) {
+  const int d_max = 40;
+
+  for (size_t i1 = 0; i1 < desc1.size(); ++i1) {
+    if (desc1[i1].empty()) continue;
     cv::DMatch m{i1, 0, 256};
-    for (size_t i2 = 0; i2 < desc2.size() ; ++i2){
+    for (size_t i2 = 0; i2 < desc2.size(); ++i2) {
       if (desc2[i2].empty()) continue;
-      int distance = 0 ; 
+      int distance = 0;
       for (int k = 0; k < 8; k++) {
         distance += _mm_popcnt_u32(desc1[i1][k] ^ desc2[i2][k]);
       }
