@@ -8,4 +8,4 @@ CMakeCache.txt
 Makefile
 slam/*/**/build/**/*
 /build/**
-
+slam-rust/target/**
