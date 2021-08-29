@@ -10,9 +10,9 @@ pub struct Point2<T>
 where
     T: PartialEq + PartialOrd + Copy + Clone,
 {
-    data: Array1<T>,
-    x: T,
-    y: T,
+    pub data: Array1<T>,
+    pub x: T,
+    pub y: T,
 }
 
 impl<T> Point2<T>
@@ -48,10 +48,10 @@ pub struct Point3<T>
 where
     T: PartialEq + PartialOrd + Copy + Clone,
 {
-    data: Array1<T>,
-    x: T,
-    y: T,
-    z: T,
+    pub data: Array1<T>,
+    pub x: T,
+    pub y: T,
+    pub z: T,
 }
 
 impl<T> Point3<T>

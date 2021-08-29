@@ -1,4 +1,5 @@
 pub mod features;
+pub mod matches;
 pub mod point;
 #[cfg(test)]
 mod tests {
