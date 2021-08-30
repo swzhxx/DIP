@@ -1,13 +1,19 @@
+#[warn(non_upper_case_globals)]
 use std::ops::{Add, Mul};
 
 use ndarray::Array2;
 use num_traits::{AsPrimitive, Num, ToPrimitive, Zero};
 
-use crate::point::Point2;
+use crate::{
+    matches::{hanming_distance, DMatch},
+    point::Point2,
+};
 
-pub type BriefDescribetor = Vec<u32>;
+pub type BriefDescriptor = Vec<u32>;
 
-const ORB_pattern: [i32; 256 * 4] = [
+pub trait OrbT: Mul + Zero + ToPrimitive + Copy + Add + From<i32> + PartialOrd {}
+
+const ORB_PATTERN: [i32; 256 * 4] = [
     8, -3, 9, 5, /*mean (0), correlation (0)*/
     4, 2, 7, -12, /*mean (1.12461e-05), correlation (0.0437584)*/
     -11, 9, -8, 2, /*mean (3.37382e-05), correlation (0.0617409)*/
@@ -269,7 +275,7 @@ const ORB_pattern: [i32; 256 * 4] = [
 #[derive(Debug)]
 struct Orb<'a, T>
 where
-    T: Num + Mul + AsPrimitive<T> + Zero + ToPrimitive + Copy + Add + From<i32>,
+    T: Num + OrbT + AsPrimitive<T>,
 {
     keypoints: &'a Vec<Point2<usize>>,
     data: &'a Array2<T>,
@@ -277,7 +283,7 @@ where
 
 impl<T> Orb<'_, T>
 where
-    T: Num + Mul + AsPrimitive<T> + Zero + ToPrimitive + Copy + Add + From<i32>,
+    T: Num + OrbT + AsPrimitive<T>,
 {
     pub fn new<'a>(data: &'a Array2<T>, keypoints: &'a Vec<Point2<usize>>) -> Orb<'a, T> {
         Orb {
@@ -286,13 +292,13 @@ where
         }
     }
     /** 生成特征点描述子描述子*/
-    pub fn create_descriptors(&self) -> Vec<BriefDescribetor> {
+    pub fn create_descriptors(&self) -> Vec<BriefDescriptor> {
         let half_patch_size: i32 = 8;
         let half_boundary: i32 = 16;
         let shape = self.data.shape();
         let rows = shape[0];
         let columns = shape[1];
-        let descriptors: Vec<BriefDescribetor> = vec![];
+        let mut descriptors: Vec<BriefDescriptor> = vec![];
         for kp in self.keypoints {
             if kp.x < half_boundary as usize
                 || kp.y < half_boundary as usize
@@ -324,15 +330,69 @@ where
             let sin_theta = m01float / m_sqrt;
             let cos_theta = m10float / m_sqrt;
 
-            let desc: BriefDescribetor = vec![];
+            let mut desc: BriefDescriptor = vec![];
             for i in 0..8 {
-                let d = 0;
+                let mut d = 0;
                 for k in 0..32 {
-                  
+                    let idx_pq = i * 32 + k;
+                    let p = Point2::new(ORB_PATTERN[idx_pq * 4], ORB_PATTERN[idx_pq * 4 + 1]);
+                    let q = Point2::new(ORB_PATTERN[idx_pq * 4 + 2], ORB_PATTERN[idx_pq * 4 + 3]);
+
+                    // rotate with theta
+                    let pp = Point2::new(
+                        (cos_theta * (p.x) as f64 - sin_theta * (p.y) as f64) as usize,
+                        (sin_theta * (p.x) as f64 + cos_theta * (p.y) as f64) as usize,
+                    );
+
+                    let qq = Point2::new(
+                        (cos_theta * (q.x) as f64 - sin_theta * (q.y) as f64) as usize,
+                        (sin_theta * (q.x) as f64 + cos_theta * (q.y) as f64) as usize,
+                    );
+                    if *self.data.get((pp.y, pp.x)).unwrap() < *self.data.get((qq.y, qq.x)).unwrap()
+                    {
+                        d = d | (1 << k);
+                    };
                 }
+                desc.push(d);
             }
+            descriptors.push(desc);
         }
 
         descriptors
+    }
+    /**
+     * brief match
+     * @param { usize } 门限，大于该值的将不会被匹配
+     */
+    pub fn brief_match<'a, U>(
+        first_data: &'a Array2<U>,
+        first_descriptors: &'a Vec<BriefDescriptor>,
+        second_data: &'a Array2<U>,
+        second_descripors: &'a Vec<BriefDescriptor>,
+        threshold: usize,
+    ) -> Vec<DMatch<usize>> {
+        let mut matches = vec![];
+        for (i1, f_desc) in first_descriptors.iter().enumerate() {
+            let mut dmatch = DMatch {
+                i1: i1,
+                i2: 0,
+                distance: 256,
+            };
+            for (i2, s_desc) in second_descripors.iter().enumerate() {
+                let mut distance = 0;
+                for k in 0..8 {
+                    distance =
+                        distance + hanming_distance((f_desc[k] as usize) ^ (s_desc[k] as usize));
+                }
+                if (distance < dmatch.distance) {
+                    dmatch.distance = distance;
+                    dmatch.i2 = i2;
+                }
+            }
+            if dmatch.distance < threshold {
+                matches.push(dmatch);
+            }
+        }
+        matches
     }
 }
