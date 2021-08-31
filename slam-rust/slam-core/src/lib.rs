@@ -1,5 +1,6 @@
 pub mod features;
 pub mod matches;
+pub mod optimize;
 pub mod point;
 #[cfg(test)]
 mod tests {
