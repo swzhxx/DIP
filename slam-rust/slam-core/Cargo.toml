@@ -7,4 +7,5 @@ version = "0.1.0"
 
 [dependencies]
 ndarray = "0.15.3"
+ndarray-linalg = "0.14.1"
 num-traits = "0.2.14"
