@@ -1,10 +1,9 @@
-use std::{ops::Mul, rc::Rc};
-
 use ndarray::{s, Array, Array1, Array2, ArrayD, ArrayView, ArrayView1, Axis};
-use ndarray_linalg::Solve;
 use ndarray_stats::QuantileExt;
-use num_traits::Num;
 
+use nshare::{ToNalgebra, ToNdarray2};
+
+use std::{ops::Mul, rc::Rc};
 pub type ErrorClousure<T> = Rc<Box<dyn Fn(&ArrayView1<f64>, usize, &T, &T) -> f64>>;
 pub type JacobianClousure<T> = Rc<Box<dyn Fn(&ArrayView1<f64>, usize, &T) -> Array1<f64>>>;
 /// Levenberg Marquardt Algorithm
@@ -71,11 +70,19 @@ impl<'a, T> LM<'a, T> {
 
     /// [列文伯格算法参数更新](https://zhuanlan.zhihu.com/p/42415718)
     fn update(&mut self, j: &Array2<f64>, f: &Array2<f64>, a: &Array2<f64>) -> Array2<f64> {
-        let hessian = j.t().dot(j);
+        let hessian: Array2<f64> = j.t().dot(j);
         let b = -j.t().dot(f);
         let delta_x = {
             let reshpe_b = b.to_shape(b.len()).unwrap();
-            hessian.solve(&reshpe_b).unwrap()
+            let h = hessian.view().into_nalgebra();
+            let rb = reshpe_b.view().into_nalgebra();
+            let decomp = h.cholesky().unwrap();
+            let mut result: Vec<f64> = vec![];
+            for val in decomp.solve(&rb).into_iter() {
+                result.push(*val);
+            }
+            Array2::<f64>::from_shape_vec((result.len(), 1), result).unwrap()
+            // hessian.solve(&reshpe_b).unwrap()
         };
         let cost = a.sum();
 
