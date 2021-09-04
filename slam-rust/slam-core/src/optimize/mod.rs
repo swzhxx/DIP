@@ -86,9 +86,9 @@ impl<'a, T> LM<'a, T> {
 
             if let Some(temp) = self.update(&jaco, &errors, &fitting, upsilon) {
                 fitting = temp;
-                println!("fitting {:?}", fitting);
+               
             }
-            // println!("{:?}", fitting);
+         
             if cost < upsilon {
                 break;
             }
@@ -136,18 +136,16 @@ impl<'a, T> LM<'a, T> {
             let predictual = -(delta_x.t().dot(&j.t()).dot(f)
                 + 0.5 * delta_x.t().dot(&hessian).dot(&delta_x))
             .sum();
-            println!("actual {:?}", actual);
-            println!("predictual {:?}", predictual);
+       
             actual / (predictual + 1e-8)
         };
-        println!("rho {:?}", rho);
-        println!("self.damp {:?}", self.damp);
+     
         if rho > 0. {
             // update dampe
             self.damp = Some(self.damp.unwrap() * (0.33).max(1. - (2. * rho - 1.).pow(3)));
             self.v = 2;
             let updated = a + &delta_x;
-            println!("updated");
+            
             Some(updated)
         } else {
             self.damp = Some(self.damp.unwrap() * (self.v as f64));
