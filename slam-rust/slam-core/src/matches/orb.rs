@@ -384,7 +384,7 @@ where
                     distance =
                         distance + hanming_distance((f_desc[k] as usize) ^ (s_desc[k] as usize));
                 }
-                if (distance < dmatch.distance) {
+                if distance < dmatch.distance {
                     dmatch.distance = distance;
                     dmatch.i2 = i2;
                 }
