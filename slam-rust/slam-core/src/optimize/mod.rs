@@ -19,6 +19,7 @@ pub struct LM<'a, T> {
 }
 
 impl<'a, T> LM<'a, T> {
+    /// tao 设置为0时，LM算法近乎等价GaussianNewtoon算法
     fn new(
         inputs: &'a Vec<T>,
         outputs: &'a Vec<T>,
@@ -45,7 +46,7 @@ impl<'a, T> LM<'a, T> {
     fn init_damp(&mut self, a: &Array2<f64>) {
         let h = a.dot(&a.t());
         let max = h.diag().max().unwrap().clone();
-        self.damp = Some(max * self.tao.unwrap() + 1e-4);
+        self.damp = Some(max * self.tao.unwrap() + 1e-8);
 
         // self.damp = Some(1.);
     }
@@ -86,9 +87,8 @@ impl<'a, T> LM<'a, T> {
 
             if let Some(temp) = self.update(&jaco, &errors, &fitting, upsilon) {
                 fitting = temp;
-               
             }
-         
+
             if cost < upsilon {
                 break;
             }
@@ -136,16 +136,16 @@ impl<'a, T> LM<'a, T> {
             let predictual = -(delta_x.t().dot(&j.t()).dot(f)
                 + 0.5 * delta_x.t().dot(&hessian).dot(&delta_x))
             .sum();
-       
+
             actual / (predictual + 1e-8)
         };
-     
+
         if rho > 0. {
             // update dampe
             self.damp = Some(self.damp.unwrap() * (0.33).max(1. - (2. * rho - 1.).pow(3)));
             self.v = 2;
             let updated = a + &delta_x;
-            
+
             Some(updated)
         } else {
             self.damp = Some(self.damp.unwrap() * (self.v as f64));
@@ -224,7 +224,7 @@ mod test {
                     Array1::from_vec(vec![a, b, c])
                 },
             )),
-            None,
+            Some(0.),
         );
 
         let fitting = lm.optimize(&fitting, Some(10000), Some(1e-6));
