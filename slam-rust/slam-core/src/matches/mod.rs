@@ -1,13 +1,18 @@
+use std::fmt::Debug;
+
 use num_traits::Num;
 
 use crate::point::Point2;
 
 pub mod orb;
+pub trait Match: Num + PartialOrd + Copy + Debug {}
+
+impl Match for usize {}
 
 #[derive(Debug)]
 pub struct DMatch<T>
 where
-    T: Num + PartialOrd + PartialEq + Copy,
+    T: Match,
 {
     i1: usize,
     i2: usize,

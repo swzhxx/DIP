@@ -5,13 +5,13 @@ use ndarray::Array2;
 use num_traits::{AsPrimitive, Num, ToPrimitive, Zero};
 
 use crate::{
-    matches::{hanming_distance, DMatch},
+    matches::{hanming_distance, DMatch, Match},
     point::Point2,
 };
 
 pub type BriefDescriptor = Vec<u32>;
 
-pub trait OrbT: Mul + Zero + ToPrimitive + Copy + Add + From<i32> + PartialOrd {}
+pub trait OrbT: Match + Mul + Zero + ToPrimitive + Copy + Add + From<i32> + PartialOrd {}
 
 const ORB_PATTERN: [i32; 256 * 4] = [
     8, -3, 9, 5, /*mean (0), correlation (0)*/
@@ -275,7 +275,7 @@ const ORB_PATTERN: [i32; 256 * 4] = [
 #[derive(Debug)]
 struct Orb<'a, T>
 where
-    T: Num + OrbT + AsPrimitive<T>,
+    T: Match + Num + OrbT + AsPrimitive<T>,
 {
     keypoints: &'a Vec<Point2<usize>>,
     data: &'a Array2<T>,
@@ -283,7 +283,7 @@ where
 
 impl<T> Orb<'_, T>
 where
-    T: Num + OrbT + AsPrimitive<T>,
+    T: Match + Num + OrbT + AsPrimitive<T>,
 {
     pub fn new<'a>(data: &'a Array2<T>, keypoints: &'a Vec<Point2<usize>>) -> Orb<'a, T> {
         Orb {
@@ -375,8 +375,8 @@ where
         for (i1, f_desc) in first_descriptors.iter().enumerate() {
             let mut dmatch = DMatch {
                 i1: i1,
-                i2: 0,
-                distance: 256,
+                i2: 0 as usize,
+                distance: 256 as usize,
             };
             for (i2, s_desc) in second_descripors.iter().enumerate() {
                 let mut distance = 0;
