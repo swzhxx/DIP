@@ -1,6 +1,6 @@
 use crate::{
     matches::{DMatch, Match},
-    point::Point2,
+    point::{Point2, Point3},
 };
 use ndarray::{Array1, Array2, Axis};
 use nshare::ToNalgebra;
@@ -28,8 +28,8 @@ impl<'a> EightPoint<'_> {
     /// 8点法计算基础矩阵
     fn calc_fundamental(
         &self,
-        points1: &Vec<Point2<f64>>,
-        points2: &Vec<Point2<f64>>,
+        points1: &Vec<Point3<f64>>,
+        points2: &Vec<Point3<f64>>,
     ) -> Option<Array2<f64>> {
         let len = points1.len().min(points2.len());
         let f: Option<Array2<f64>> = None;
@@ -38,8 +38,8 @@ impl<'a> EightPoint<'_> {
         } else {
             let mut w = Array2::<f64>::zeros((0, 9));
             for k in 0..len {
-                let mp1 = points1[k];
-                let mp2 = points2[k];
+                let mp1 = &points1[k];
+                let mp2 = &points2[k];
                 w.push(
                     Axis(0),
                     Array1::<f64>::from_vec(vec![
@@ -77,28 +77,54 @@ impl<'a> EightPoint<'_> {
         let points1 = self
             .match_points_1
             .iter()
-            .map(|p| Point2::new(p.x as f64, p.y as f64))
+            .map(|p| Point3::new(p.x as f64, p.y as f64, 1.))
             .collect();
         let points2 = self
             .match_points_2
             .iter()
-            .map(|p| Point2::new(p.x as f64, p.y as f64))
+            .map(|p| Point3::new(p.x as f64, p.y as f64, 1.))
             .collect();
         self.calc_fundamental(&points1, &points2)
     }
 
     /// 归一化8点法计算基础矩阵
     pub fn normalize_find_fundamental(&mut self) -> Option<Array2<f64>> {
-        let h1 = self.normalize(self.match_points_1);
-        let h2 = self.normalize(self.match_points_2);
+        let to_float = |points: &Vec<Point2<usize>>| -> Vec<Point2<f64>> {
+            points
+                .iter()
+                .map(|p| Point2::<f64>::new(p.x as f64, p.y as f64))
+                .collect()
+        };
 
-        let build_normalize_points = |points, t| -> Vec<Point2<f64>> { todo!() };
-        todo!()
+        let points1 = to_float(&self.match_points_1);
+        let points2 = to_float(&self.match_points_2);
+        let h1 = self.get_normalize_translate_matrix(&points1);
+        let h2 = self.get_normalize_translate_matrix(&points2);
+
+        let build_normalize_points =
+            |points: &Vec<Point2<f64>>, t: &Array2<f64>| -> Vec<Point3<f64>> {
+                points
+                    .iter()
+                    .map(|p| {
+                        let p3 = p.homogeneous();
+                        let p = t.dot(&p3.data);
+                        Point3::<f64>::new(p[0], p[1], p[2])
+                    })
+                    .collect()
+            };
+        let normalize_points1 = build_normalize_points(&points1, &h1);
+        let normalize_points2 = build_normalize_points(&points2, &h2);
+
+        if let Some(fundmatental) = self.calc_fundamental(&normalize_points1, &normalize_points2) {
+            Some(h2.t().dot(&fundmatental).dot(&h1))
+        } else {
+            None
+        }
     }
 
-    fn normalize(&self, points: &Vec<Point2<usize>>) -> Array2<f64> {
-        let u_bar = points.iter().fold(0., |a, b| a + b.x as f64);
-        let v_bar = points.iter().fold(0., |a, b| a + b.y as f64);
+    fn get_normalize_translate_matrix(&self, points: &Vec<Point2<f64>>) -> Array2<f64> {
+        let u_bar = points.iter().fold(0., |a, b| a + b.x);
+        let v_bar = points.iter().fold(0., |a, b| a + b.y);
         let len = points.len() as f64;
         let divisor = points.iter().fold(0., |prev, p| {
             prev + (p.x as f64 - u_bar) + (p.y as f64 - v_bar)
