@@ -1,12 +1,12 @@
 use std::ops::Deref;
 
 use ndarray::{Array1, Ix1};
-use num_traits::{AsPrimitive, Num};
+use num_traits::{AsPrimitive, Num, ToPrimitive};
 
 // pub type Point2<T> = ArrayBase<T, [usize; 2]>;
 // pub type Point3<T> = ArrayBase<T, [usize; 3]>;
 
-pub trait Point: PartialEq + PartialOrd + Copy + Clone + Num {}
+pub trait Point: PartialEq + PartialOrd + Copy + Clone + Num + ToPrimitive {}
 impl Point for usize {}
 impl Point for f64 {}
 impl Point for u32 {}
@@ -33,6 +33,10 @@ where
 
     pub fn homogeneous(&self) -> Point3<T> {
         Point3::new(self.x, self.y, T::one())
+    }
+
+    pub fn f(&self) -> Point2<f64> {
+        Point2::new(self.x.to_f64(), self.y.to_f64())
     }
 }
 
@@ -87,6 +91,9 @@ where
             x,
             z,
         }
+    }
+    pub fn f(&self) -> Point2<f64> {
+        Point3::new(self.x.to_f64(), self.y.to_f64(), self.z.to_f64())
     }
 }
 
