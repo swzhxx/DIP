@@ -2,12 +2,12 @@ mod eight_point;
 use std::rc::Rc;
 
 pub use eight_point::*;
-use ndarray::Array2;
+use ndarray::{array, Array2};
 use nshare::{ToNalgebra, ToNdarray2};
 
 use crate::{
     optimize::LM,
-    point::{Point, Point2},
+    point::{Point, Point2, Point3},
 };
 
 /// 通过Fundamental矩阵计算旋转和平移矩阵
@@ -28,20 +28,34 @@ pub fn restoration_perspective_structure<T>(
     fundamental: Array2<f64>,
     match1: &MatchPoints<T>,
     match2: &MatchPoints<T>,
+    iter: Option<usize>,
 ) -> Array2<f64>
 where
     T: Point,
 {
     let (a, b) = find_pose(fundamental);
-    let m = b.dot(&a);
-    let match1: MatchPoints<f64> = match1.iter().map(|p| p.f()).collect();
-    let match2: MatchPoints<f64> = match2.iter().map(|p| p.f()).collect();
-    LM::new(
+    let b = array![b[[2, 1]], b[[0, 2]], b[[1, 1]]];
+    // let m = b.dot(&a);
+    // let m = m.into_shape((m.len())).unwrap();
+    let mut m = a.clone();
+    m.push_column(b.view()).unwrap();
+    let m = m.into_shape((m.len())).unwrap();
+    let match1: Vec<Point3<f64>> = match1.iter().map(|p| p.f().homogeneous()).collect();
+    let match2: Vec<Point3<f64>> = match2.iter().map(|p| p.f().homogeneous()).collect();
+    let mut lm = LM::new(
         &match2,
         &match1,
         Rc::new(Box::new(|args, _, input, output| todo!())),
         Rc::new(Box::new(|args, _, input| todo!())),
         None,
     );
-    todo!()
+    let t;
+
+    if let Some(iter_count) = iter {
+        t = lm.optimize(&m, Some(iter_count), None);
+    } else {
+        t = lm.optimize(&m, Some(100), None);
+    }
+
+    t.into_shape((4, 3)).unwrap()
 }
