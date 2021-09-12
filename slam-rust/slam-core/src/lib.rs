@@ -2,7 +2,7 @@ pub mod features;
 pub mod matches;
 pub mod optimize;
 pub mod point;
-pub mod pose;
+pub mod sfm;
 #[cfg(test)]
 mod tests {
     #[test]

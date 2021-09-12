@@ -20,7 +20,7 @@ pub struct LM<'a, T> {
 
 impl<'a, T> LM<'a, T> {
     /// tao 设置为0时，LM算法近乎等价GaussianNewtoon算法
-    fn new(
+    pub fn new(
         inputs: &'a Vec<T>,
         outputs: &'a Vec<T>,
         error_closure: ErrorClousure<T>,
@@ -52,6 +52,14 @@ impl<'a, T> LM<'a, T> {
     }
 
     /// 优化
+    ///
+    /// *args*:初始化参数，
+    ///
+    /// *max_iter_count*:最大的迭代次数
+    ///
+    /// *upsilon*:当差值低于该值时，终止迭代
+    ///
+    ///
     pub fn optimize(
         &mut self,
         args: &Array1<f64>,

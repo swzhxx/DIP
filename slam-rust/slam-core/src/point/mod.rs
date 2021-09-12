@@ -36,7 +36,7 @@ where
     }
 
     pub fn f(&self) -> Point2<f64> {
-        Point2::new(self.x.to_f64(), self.y.to_f64())
+        Point2::new(self.x.to_f64().unwrap(), self.y.to_f64().unwrap())
     }
 }
 
@@ -92,8 +92,12 @@ where
             z,
         }
     }
-    pub fn f(&self) -> Point2<f64> {
-        Point3::new(self.x.to_f64(), self.y.to_f64(), self.z.to_f64())
+    pub fn f(&self) -> Point3<f64> {
+        Point3::new(
+            self.x.to_f64().unwrap(),
+            self.y.to_f64().unwrap(),
+            self.z.to_f64().unwrap(),
+        )
     }
 }
 
