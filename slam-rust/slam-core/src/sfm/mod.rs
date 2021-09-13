@@ -2,7 +2,7 @@ mod eight_point;
 use std::rc::Rc;
 
 pub use eight_point::*;
-use ndarray::{array, Array2};
+use ndarray::{array, Array1, Array2};
 use nshare::{ToNalgebra, ToNdarray2};
 
 use crate::{
@@ -45,8 +45,35 @@ where
     let mut lm = LM::new(
         &match2,
         &match1,
-        Rc::new(Box::new(|args, _, input, output| todo!())),
-        Rc::new(Box::new(|args, _, input| todo!())),
+        Rc::new(Box::new(|args, _, input, output| {
+            let x = args[0] * input.x + args[1] * input.y + args[2] * input.z + args[3];
+            let y = args[4] * input.x + args[5] * input.y + args[6] * input.z + args[7];
+            let z = args[8] * input.x + args[9] * input.y + args[10] * input.z + args[11];
+
+            ((output.x - x).powf(2.) + (output.y - y).powf(2.) + (output.z - z).powf(2.)).sqrt()
+        })),
+        Rc::new(Box::new(|args, _, input, error| -> Array1<f64> {
+            let x = args[0] * input.x + args[1] * input.y + args[2] * input.z + args[3];
+            let y = args[4] * input.x + args[5] * input.y + args[6] * input.z + args[7];
+            let z = args[8] * input.x + args[9] * input.y + args[10] * input.z + args[11];
+
+            let mut jaco = Array1::from_elem((args.len()), 0.);
+            args[0] = (1. / error.sqrt() + f64::MIN.abs()) * 2. * x * input[0];
+            args[1] = (1. / error.sqrt() + f64::MIN.abs()) * 2. * x * input[1];
+            args[2] = (1. / error.sqrt() + f64::MIN.abs()) * 2. * x * input[2];
+            args[3] = (1. / error.sqrt() + f64::MIN.abs()) * 2. * x;
+
+            args[4] = (1. / error.sqrt() + f64::MIN.abs()) * 2. * x * input[0];
+            args[5] = (1. / error.sqrt() + f64::MIN.abs()) * 2. * x * input[1];
+            args[6] = (1. / error.sqrt() + f64::MIN.abs()) * 2. * x * input[2];
+            args[7] = (1. / error.sqrt() + f64::MIN.abs()) * 2. * x;
+
+            args[8] = (1. / error.sqrt() + f64::MIN.abs()) * 2. * x * input[0];
+            args[8] = (1. / error.sqrt() + f64::MIN.abs()) * 2. * x * input[1];
+            args[10] = (1. / error.sqrt() + f64::MIN.abs()) * 2. * x * input[2];
+            args[11] = (1. / error.sqrt() + f64::MIN.abs()) * 2. * x;
+            jaco
+        })),
         None,
     );
     let t;
@@ -56,6 +83,6 @@ where
     } else {
         t = lm.optimize(&m, Some(100), None);
     }
-
+      
     t.into_shape((4, 3)).unwrap()
 }

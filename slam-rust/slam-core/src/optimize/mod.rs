@@ -6,7 +6,7 @@ use num_traits::{Float, Pow};
 
 use std::rc::Rc;
 pub type ErrorClousure<T> = Rc<Box<dyn Fn(&ArrayView1<f64>, usize, &T, &T) -> f64>>;
-pub type JacobianClousure<T> = Rc<Box<dyn Fn(&ArrayView1<f64>, usize, &T) -> Array1<f64>>>;
+pub type JacobianClousure<T> = Rc<Box<dyn Fn(&ArrayView1<f64>, usize, &T, f64) -> Array1<f64>>>;
 /// Levenberg Marquardt Algorithm
 pub struct LM<'a, T> {
     tao: Option<f64>,
@@ -84,7 +84,7 @@ impl<'a, T> LM<'a, T> {
         loop {
             let reshape_fitting = fitting.slice(s![.., ..]).to_shape(len).unwrap().to_owned();
             let errors = self.error(&reshape_fitting.slice(s![..]));
-            let jaco = self.jaco(&reshape_fitting.slice(s![..]));
+            let jaco = self.jaco(&reshape_fitting.slice(s![..]), &errors.slice(s![..]));
             let cost = self.cost(&errors.view());
             match self.damp {
                 None => {
@@ -178,11 +178,11 @@ impl<'a, T> LM<'a, T> {
         0.5 * error_matrix.dot(&error_matrix.t()).sum()
     }
     /// 求解jacobian
-    fn jaco(&self, args: &ArrayView1<f64>) -> Array2<f64> {
+    fn jaco(&self, args: &ArrayView1<f64>, errors: &ArrayView2<f64>) -> Array2<f64> {
         let mut jaco = Array2::<f64>::zeros((0, args.len()));
         let jacobian_closure = self.jacobian_closure.clone();
         for row_i in 0..self.inputs.len() {
-            let j = jacobian_closure(args, row_i, &self.inputs[row_i]);
+            let j = jacobian_closure(args, row_i, &self.inputs[row_i], errors[[row_i, 0]]);
             jaco.push(Axis(0), j.slice(s![..]));
         }
         jaco
@@ -223,7 +223,7 @@ mod test {
                 },
             )),
             Rc::new(Box::new(
-                |args: &ArrayView1<f64>, row_i: usize, input| -> Array1<f64> {
+                |args: &ArrayView1<f64>, row_i: usize, input, _| -> Array1<f64> {
                     let a = -(input * input)
                         * (input * input * args[0] + input * args[1] + args[2]).exp();
                     let b = -input * (input * input * args[0] + input * args[1] + args[2]).exp();
