@@ -3,6 +3,7 @@ pub mod matches;
 pub mod optimize;
 pub mod point;
 pub mod sfm;
+pub mod triangulate;
 #[cfg(test)]
 mod tests {
     #[test]

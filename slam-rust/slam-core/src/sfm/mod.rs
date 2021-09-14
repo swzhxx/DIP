@@ -38,8 +38,9 @@ where
     // let m = b.dot(&a);
     // let m = m.into_shape((m.len())).unwrap();
     let mut m = a.clone();
+    let m_len = m.len();
     m.push_column(b.view()).unwrap();
-    let m = m.into_shape((m.len())).unwrap();
+    let m = m.into_shape(m_len).unwrap();
     let match1: Vec<Point3<f64>> = match1.iter().map(|p| p.f().homogeneous()).collect();
     let match2: Vec<Point3<f64>> = match2.iter().map(|p| p.f().homogeneous()).collect();
     let mut lm = LM::new(
@@ -58,20 +59,20 @@ where
             let z = args[8] * input.x + args[9] * input.y + args[10] * input.z + args[11];
 
             let mut jaco = Array1::from_elem((args.len()), 0.);
-            args[0] = (1. / error.sqrt() + f64::MIN.abs()) * 2. * x * input[0];
-            args[1] = (1. / error.sqrt() + f64::MIN.abs()) * 2. * x * input[1];
-            args[2] = (1. / error.sqrt() + f64::MIN.abs()) * 2. * x * input[2];
-            args[3] = (1. / error.sqrt() + f64::MIN.abs()) * 2. * x;
+            jaco[0] = (1. / error.sqrt() + f64::MIN.abs()) * 2. * x * input[0];
+            jaco[1] = (1. / error.sqrt() + f64::MIN.abs()) * 2. * x * input[1];
+            jaco[2] = (1. / error.sqrt() + f64::MIN.abs()) * 2. * x * input[2];
+            jaco[3] = (1. / error.sqrt() + f64::MIN.abs()) * 2. * x;
 
-            args[4] = (1. / error.sqrt() + f64::MIN.abs()) * 2. * x * input[0];
-            args[5] = (1. / error.sqrt() + f64::MIN.abs()) * 2. * x * input[1];
-            args[6] = (1. / error.sqrt() + f64::MIN.abs()) * 2. * x * input[2];
-            args[7] = (1. / error.sqrt() + f64::MIN.abs()) * 2. * x;
+            jaco[4] = (1. / error.sqrt() + f64::MIN.abs()) * 2. * x * input[0];
+            jaco[5] = (1. / error.sqrt() + f64::MIN.abs()) * 2. * x * input[1];
+            jaco[6] = (1. / error.sqrt() + f64::MIN.abs()) * 2. * x * input[2];
+            jaco[7] = (1. / error.sqrt() + f64::MIN.abs()) * 2. * x;
 
-            args[8] = (1. / error.sqrt() + f64::MIN.abs()) * 2. * x * input[0];
-            args[8] = (1. / error.sqrt() + f64::MIN.abs()) * 2. * x * input[1];
-            args[10] = (1. / error.sqrt() + f64::MIN.abs()) * 2. * x * input[2];
-            args[11] = (1. / error.sqrt() + f64::MIN.abs()) * 2. * x;
+            jaco[8] = (1. / error.sqrt() + f64::MIN.abs()) * 2. * x * input[0];
+            jaco[8] = (1. / error.sqrt() + f64::MIN.abs()) * 2. * x * input[1];
+            jaco[10] = (1. / error.sqrt() + f64::MIN.abs()) * 2. * x * input[2];
+            jaco[11] = (1. / error.sqrt() + f64::MIN.abs()) * 2. * x;
             jaco
         })),
         None,
@@ -83,6 +84,6 @@ where
     } else {
         t = lm.optimize(&m, Some(100), None);
     }
-      
+
     t.into_shape((4, 3)).unwrap()
 }

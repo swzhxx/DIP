@@ -84,7 +84,7 @@ impl<'a, T> LM<'a, T> {
         loop {
             let reshape_fitting = fitting.slice(s![.., ..]).to_shape(len).unwrap().to_owned();
             let errors = self.error(&reshape_fitting.slice(s![..]));
-            let jaco = self.jaco(&reshape_fitting.slice(s![..]), &errors.slice(s![..]));
+            let jaco = self.jaco(&reshape_fitting.slice(s![..]), &errors.slice(s![..,..]));
             let cost = self.cost(&errors.view());
             match self.damp {
                 None => {

@@ -1,4 +1,4 @@
-use std::ops::Deref;
+use std::{convert::TryFrom, ops::Deref};
 
 use ndarray::{Array1, Ix1};
 use num_traits::{AsPrimitive, Num, ToPrimitive};
@@ -68,6 +68,20 @@ where
     }
 }
 
+impl<T> TryFrom<Array1<T>> for Point2<T>
+where
+    T: Point,
+{
+    type Error = &'static str;
+    fn try_from(arr: Array1<T>) -> Result<Self, Self::Error> {
+        if arr.len() < 3 {
+            Err("Array1 len must >= 2")
+        } else {
+            Ok(Point2::new(arr[0], arr[1]))
+        }
+    }
+}
+
 #[derive(Debug, Clone)]
 pub struct Point3<T>
 where
@@ -117,5 +131,19 @@ where
 {
     fn eq(&self, other: &Self) -> bool {
         self.x == other.x && self.y == other.y && self.z == other.z
+    }
+}
+
+impl<T> TryFrom<Array1<T>> for Point3<T>
+where
+    T: Point,
+{
+    type Error = &'static str;
+    fn try_from(arr: Array1<T>) -> Result<Self, Self::Error> {
+        if arr.len() < 3 {
+            Err("Array1 len must >= 3")
+        } else {
+            Ok(Point3::new(arr[0], arr[1], arr[2]))
+        }
     }
 }
