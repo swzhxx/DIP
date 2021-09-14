@@ -17,8 +17,7 @@ impl<'a> Triangulate<'_> {
     }
 
     /// svd 求解
-    pub fn svd_solve(&self) -> Point3<f64> {
-        let len = self.pair.len();
+    pub fn solve(&self) -> Point3<f64> {
         let mut left_matrix = Array2::<f64>::from_shape_vec((0, 3), vec![]).unwrap();
         for item in self.pair {
             let (point_1, transform_matrix, point_2) = &item;
@@ -61,10 +60,5 @@ impl<'a> Triangulate<'_> {
         let x = svd.v_t.unwrap();
         let x: Point3<f64> = x.column(2).into_ndarray1().to_owned().try_into().unwrap();
         x
-    }
-
-    /// svd求解后进行lm优化求解
-    pub fn solve() -> Point3<f64> {
-        todo!()
     }
 }
