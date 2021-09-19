@@ -1,8 +1,10 @@
 //! 单视图结构恢复
 
-use ndarray::Array2;
-
 use crate::point::Point2;
+
+use ndarray::{array, Array2, Axis};
+use nshare::ToNalgebra;
+use nshare::ToNdarray2;
 
 pub struct SingleViewRecover {}
 
@@ -52,8 +54,58 @@ impl SingleViewRecover {
         vp2: &Point2<f64>,
         vp3: &Point2<f64>,
     ) -> Array2<f64> {
-        let vp1 = vp1.data.clone();
-        let vp2 = vp2.data.clone();
-        todo!()
+        // let v1 = &vp1.data;
+        // let v2 = &vp2.data;
+        // let v3 = &vp3.data;
+
+        let mut a: Array2<f64> = Array2::<f64>::from_elem((3, 4), 0.);
+
+        a.push(
+            Axis(0),
+            array![
+                vp1.x * vp2.x + vp1.y * vp2.y,
+                vp1.x + vp2.x,
+                vp2.x + vp2.y,
+                1.
+            ]
+            .view(),
+        )
+        .unwrap();
+
+        a.push(
+            Axis(0),
+            array![
+                vp1.x * vp3.x + vp1.y * vp3.y,
+                vp1.x + vp3.x,
+                vp3.x + vp3.y,
+                1.
+            ]
+            .view(),
+        )
+        .unwrap();
+
+        a.push(
+            Axis(0),
+            array![
+                vp2.x * vp3.x + vp2.y * vp3.y,
+                vp2.x + vp3.x,
+                vp3.x + vp3.y,
+                1.
+            ]
+            .view(),
+        )
+        .unwrap();
+
+        let svd = a.into_nalgebra().svd(false, true);
+        let vt = svd.v_t.unwrap();
+        let w = vt.column(2);
+        let omega = array![[w[0], 0., w[1]], [0., w[0], w[2]], [w[1], w[2], w[3]]];
+
+        let kt_inv = omega.into_nalgebra().cholesky().unwrap().l();
+        let mut k = kt_inv.transpose().try_inverse().unwrap();
+        // let k = DVector::<f64>::from_column_slice(data)
+        let k: Vec<f64> = k.data.into();
+        let k = Array2::from_shape_vec((3, 3), k).unwrap();
+        k
     }
 }
