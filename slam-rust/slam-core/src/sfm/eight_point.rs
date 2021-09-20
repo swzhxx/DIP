@@ -2,6 +2,7 @@ use crate::{
     matches::{DMatch, Match},
     point::{Point2, Point3},
 };
+use nalgebra::{Const, Dim, Dynamic, Matrix3xX};
 use ndarray::{Array1, Array2, Axis};
 use nshare::ToNalgebra;
 use num_traits::{AsPrimitive, Float, Num};
@@ -61,6 +62,10 @@ impl<'a> EightPoint<'_> {
             let svd = w.view().into_nalgebra().svd(false, true);
             let v_t = svd.v_t.unwrap();
             let f = v_t.column(8);
+            let f: Matrix3xX<f64> = f
+                .clone_owned()
+                .reshape_generic(Const::<3>, Dynamic::from_usize(3));
+
             let mut f_svd = f.svd(true, true);
             f_svd.singular_values[2] = 0.;
             let f_bar = f_svd.recompose().unwrap();
@@ -123,10 +128,9 @@ impl<'a> EightPoint<'_> {
         let divisor = points.iter().fold(0., |prev, p| {
             prev + (p.x as f64 - u_bar).powf(2.) + (p.y as f64 - v_bar).powf(2.)
         });
-        let s = (2. * len).sqrt() / divisor.sqrt();
+        let s = ((2. * len) / divisor).sqrt();
 
-        s * Array2::from_shape_vec((3, 3), vec![1., 0., -u_bar, 0., 1., -v_bar, 0., 0., 1. / s])
-            .unwrap()
+        s * Array2::from_shape_vec((3, 3), vec![s, 0., -u_bar, 0., s, -v_bar, 0., 0., 1.]).unwrap()
     }
 }
 
