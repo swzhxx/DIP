@@ -11,3 +11,5 @@ ndarray = "0.15.3"
 ndarray-stats = "0.5.0"
 nshare = {version = "0.7.0", features = ["nalgebra", "ndarray"]}
 num-traits = "0.2.14"
+
+[target.'cfg(test)'.dependencies]

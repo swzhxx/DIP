@@ -4,7 +4,6 @@ use crate::point::Point2;
 
 use ndarray::{array, Array2, Axis};
 use nshare::ToNalgebra;
-use nshare::ToNdarray2;
 
 pub struct SingleViewRecover {}
 
@@ -13,10 +12,12 @@ impl SingleViewRecover {
     ///
     /// # Examples #
     ///
-    /// ```
-    /// let (slope , b) = SingleViewRecover::linear_equation(p1: Point2::new(1.0,1.0), p2: Point2::new(0.,0.))
-    /// assert(slope , 1.)
-    /// assert(b , 0)
+    /// ```ignore
+    /// use slam_core::single::SingleViewRecover;
+    /// use slam_core::point::Point2;
+    /// let (slope , b) = SingleViewRecover::linear_equation( Point2::new(1.0,1.0),  Point2::new(0.,0.));
+    /// assert_eq!(slope , 1.);
+    /// assert_eq!(b , 0.);
     /// ```
     pub fn linear_equation(p1: &Point2<f64>, p2: &Point2<f64>) -> (f64, f64) {
         let x1 = p1.x;
