@@ -37,7 +37,9 @@ impl WrapperSingleViewRecover {
         ]
     }
     /// 给定一张图片，并选取图像中不共面的3组平行线
+    ///
     /// 将每条平行线的2个点按顺序放入到points中，
+    ///
     /// points的长度为12
     pub fn single_view_recover(&mut self, image: ImageData, points: Vec<f64>) {
         let data = &image.data();
@@ -79,7 +81,7 @@ impl WrapperSingleViewRecover {
                 colors.push(color[3]);
             }
         }
-        self.points3d = points;
+        self.points3d = points_3d;
         self.colors = colors;
     }
 }
