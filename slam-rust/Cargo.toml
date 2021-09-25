@@ -2,6 +2,7 @@
 
 members = [
   "slam-core",
+  "slam-wasm"
 ]
 
 
