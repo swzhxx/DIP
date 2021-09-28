@@ -1,5 +1,5 @@
 import React, { useState, useRef, ChangeEvent, MouseEvent } from 'react'
-
+import { Slam } from '@/slam'
 type Style = {
   width?: number
   height?: number
@@ -10,7 +10,10 @@ const colors = ['red', 'green', 'blue']
 export default (): JSX.Element => {
   const canvasEl = useRef<HTMLCanvasElement>(null)
   const [style, setStyle] = useState<Style>({})
-  const [parallelLines, setParallelLines] = useState<Array<number>>([])
+  const [parallelLines, setParallelLines] = useState<Array<number>>([
+    727, 332, 1012, 419, 1005, 490, 717, 394, 1079, 599, 1831, 473, 1094, 1329,
+    1781, 1080, 2090, 720, 2108, 588, 2156, 746, 2174, 600,
+  ])
   const [drawParallLineIndex, setDrawParallLineIndex] = useState<number | null>(
     null
   )
@@ -89,15 +92,37 @@ export default (): JSX.Element => {
     }
 
     setParallelLines(_parallelLines)
+    if ((_parallelLines.length / 2 / 2) % 2 == 0) {
+      let next = _parallelLines.length / 2 / 2 / 2
+      setDrawParallLineIndex(next)
+    }
+
     // context.
+  }
+
+  const recover = () => {
+    let ctx = getContext()
+    if (!ctx) {
+      return
+    }
+    let image = ctx.getImageData(0, 0, style.width || 0, style.height || 0)
+    let singleViewRecover = new Slam.WrapperSingleViewRecover()
+    singleViewRecover.single_view_recover(
+      image,
+      new Float64Array(parallelLines)
+    )
+
+    let point3ds = singleViewRecover.get_own_points3d()
+    let colors = singleViewRecover.get_own_colors()
+
+    console.log(point3ds, colors)
   }
   // const onCanvasMouseUp = (event: MouseEvent) => {}
   return (
     <div>
       <input type='file' accept='image/*' onChange={handleDisplayImage} />
-      <button onClick={() => drawParallelLines(0)}>第一组平行线</button>
-      <button onClick={() => drawParallelLines(1)}>第二组平行线</button>
-      <button onClick={() => drawParallelLines(2)}>第三组平行线</button>
+      <button onClick={() => drawParallelLines(0)}>选择平行线</button>
+      <button onClick={() => recover()}>恢复</button>
       <canvas
         onMouseDown={onCanavasMouseDown}
         // onMouseUp={onCanvasMouseUp}

@@ -5,7 +5,7 @@ use slam_core::{point::Point2, single::SingleViewRecover};
 use wasm_bindgen::prelude::*;
 use web_sys::ImageData;
 
-#[wasm_bindgen(js_name=SingleViewRecover)]
+#[wasm_bindgen]
 struct WrapperSingleViewRecover {
     points3d: Vec<f64>,
     colors: Vec<u8>,
@@ -14,7 +14,7 @@ struct WrapperSingleViewRecover {
 #[wasm_bindgen]
 impl WrapperSingleViewRecover {
     #[wasm_bindgen(constructor)]
-    pub fn new(image: ImageData) -> WrapperSingleViewRecover {
+    pub fn new() -> WrapperSingleViewRecover {
         WrapperSingleViewRecover {
             points3d: vec![],
             colors: vec![],
@@ -40,16 +40,21 @@ impl WrapperSingleViewRecover {
     ///
     /// 将每条平行线的2个点按顺序放入到points中，
     ///
-    /// points的长度为12
+    /// points的长度为24
     pub fn single_view_recover(&mut self, image: ImageData, points: Vec<f64>) {
+        web_sys::console::log_1(&format!("{:?}", "single_view_recover").into());
+        web_sys::console::log_1(&format!("{:?}", points.len()).into());
         let data = &image.data();
         let height: usize = image.height() as usize;
         let width: usize = image.width() as usize;
+        web_sys::console::log_1(&format!("{:?}", height).into());
+        web_sys::console::log_1(&format!("{:?}", width).into());
+        web_sys::console::log_1(&format!("{:?}", data.len()).into());
         let data = ndarray::Array::from_shape_vec((height, width, 4usize), data.to_vec()).unwrap();
-        if points.len() != 12 {
+        if points.len() != 24 {
             panic!("the argument points len must be 12");
         }
-
+        web_sys::console::log_1(&format!("enumerate").into());
         let mut ps = vec![];
         for (index, val) in points.iter().enumerate() {
             if index % 2 == 1 {
@@ -58,10 +63,13 @@ impl WrapperSingleViewRecover {
         }
 
         let vp1 = SingleViewRecover::find_vanshing_point(&ps[0], &ps[1], &ps[2], &ps[3]);
-        let vp2 = SingleViewRecover::find_vanshing_point(&ps[4], &ps[4], &ps[6], &ps[7]);
+        web_sys::console::log_1(&format!("vp1 {:?}", vp1).into());
+        let vp2 = SingleViewRecover::find_vanshing_point(&ps[4], &ps[5], &ps[6], &ps[7]);
+        web_sys::console::log_1(&format!("vp2 {:?}", vp2).into());
         let vp3 = SingleViewRecover::find_vanshing_point(&ps[8], &ps[9], &ps[10], &ps[11]);
-
+        web_sys::console::log_1(&format!("vp3 {:?}", vp3).into());
         let k = SingleViewRecover::compute_camera_params_from_vanshing_points(&vp1, &vp2, &vp3);
+        web_sys::console::log_1(&format!("k {:?}", k).into());
         let k_inv = k.into_nalgebra().try_inverse().unwrap().to_owned();
         let k_inv_raw_vec: Vec<f64> = k_inv.iter().map(|val| *val).collect();
         let k_inv = Array::from_shape_vec((3, 3), k_inv_raw_vec).unwrap();

@@ -5,6 +5,7 @@ pub mod point;
 pub mod sfm;
 pub mod single;
 pub mod triangulate;
+mod svd;
 #[cfg(test)]
 mod tests {
     #[test]

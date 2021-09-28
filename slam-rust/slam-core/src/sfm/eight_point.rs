@@ -62,6 +62,8 @@ impl<'a> EightPoint<'_> {
             let svd = w.view().into_nalgebra().svd(false, true);
             let v_t = svd.v_t.unwrap();
             let f = v_t.column(8);
+            
+
             let f: Matrix3xX<f64> = f
                 .clone_owned()
                 .reshape_generic(Const::<3>, Dynamic::from_usize(3));

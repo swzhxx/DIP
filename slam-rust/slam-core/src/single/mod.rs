@@ -1,7 +1,8 @@
 //! 单视图结构恢复
 
-use crate::point::Point2;
+use crate::{point::Point2, svd::compute_min_vt_eigen_vector};
 
+use nalgebra::Matrix3x4;
 use ndarray::{array, Array2, Axis};
 use nshare::ToNalgebra;
 
@@ -59,7 +60,7 @@ impl SingleViewRecover {
         // let v2 = &vp2.data;
         // let v3 = &vp3.data;
 
-        let mut a: Array2<f64> = Array2::<f64>::from_elem((3, 4), 0.);
+        let mut a: Array2<f64> = Array2::<f64>::from_elem((0, 4), 0.);
 
         a.push(
             Axis(0),
@@ -97,16 +98,50 @@ impl SingleViewRecover {
         )
         .unwrap();
 
-        let svd = a.into_nalgebra().svd(false, true);
-        let vt = svd.v_t.unwrap();
-        let w = vt.column(2);
+        let na = a.view().into_nalgebra().into_owned();
+        let w = compute_min_vt_eigen_vector(&na);
+        // let svd = na.svd(true, true);
+        // let vt = svd.v_t.unwrap();
+        // let w = vt.column(3);
+        // println!("w {:?}", w.len());
+        // println!("w[0] {:?}", w[0]);
+        // println!("w[1] {:?}", w[1]);
+        // println!("w[2] {:?}", w[2]);
+        // println!("w[3] {:?}", w[3]);
         let omega = array![[w[0], 0., w[1]], [0., w[0], w[2]], [w[1], w[2], w[3]]];
 
         let kt_inv = omega.into_nalgebra().cholesky().unwrap().l();
         let mut k = kt_inv.transpose().try_inverse().unwrap();
         // let k = DVector::<f64>::from_column_slice(data)
         let k: Vec<f64> = k.data.into();
-        let k = Array2::from_shape_vec((3, 3), k).unwrap();
-        k
+        let k22 = *k.get(k.len() - 1).unwrap();
+        let mut k = Array2::from_shape_vec((3, 3), k).unwrap();
+        k * (1. / k22)
     }
 }
+
+#[cfg(test)]
+mod test {
+    use super::SingleViewRecover;
+    use crate::point::Point2;
+    #[test]
+    fn compute_camera_params_from_vanshing_points() {
+        let vp1: Point2<f64> = Point2::new(-1600.5, -378.5);
+        let vp2: Point2<f64> = Point2::new(4852.5580716, -33.271318753352034);
+        let vp3: Point2<f64> = Point2::new(2811.714285714286, -4572.571428571429);
+        let result =
+            SingleViewRecover::compute_camera_params_from_vanshing_points(&vp1, &vp2, &vp3);
+    }
+}
+// (array([[ 0.48261984,  0.85470801, -0.19118659],
+//   [ 0.17237483,  0.12132715,  0.97753089],
+//   [-0.8586996 ,  0.50473156,  0.08877526]]),
+// array([1.60663217e+07, 7.43446220e+03, 3.06244207e+03]),
+// array([[-9.99999931e-01, -2.98949389e-04,  2.19988330e-04,
+//    -1.26790027e-08],
+//   [-1.83967610e-04,  9.13975103e-01,  4.05770178e-01,
+//     1.99176036e-04],
+//   [-3.22368589e-04,  4.05770049e-01, -9.13975099e-01,
+//     2.85758731e-04],
+//   [ 1.16082584e-07, -2.97994294e-04,  1.80356683e-04,
+//     9.99999939e-01]]))
