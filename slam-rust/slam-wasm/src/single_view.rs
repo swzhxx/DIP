@@ -1,6 +1,6 @@
 use js_sys::Uint8ClampedArray;
 use ndarray::prelude::*;
-use nshare::ToNalgebra;
+use nshare::{RefNdarray2, ToNalgebra};
 use slam_core::{point::Point2, single::SingleViewRecover};
 use wasm_bindgen::prelude::*;
 use web_sys::ImageData;
@@ -73,8 +73,8 @@ impl WrapperSingleViewRecover {
         if let Some(k) = option_k {
             // web_sys::console::log_1(&format!("k {:?}", k).into());
             let k_inv = k.into_nalgebra().try_inverse().unwrap().to_owned();
-            let k_inv_raw_vec: Vec<f64> = k_inv.iter().map(|val| *val).collect();
-            let k_inv = Array::from_shape_vec((3, 3), k_inv_raw_vec).unwrap();
+            // let k_inv_raw_vec: Vec<f64> = k_inv.iter().map(|val| *val).collect();
+            let k_inv = k_inv.ref_ndarray2().into_owned();
             let mut points_3d: Vec<f64> = vec![];
             let mut colors: Vec<u8> = vec![];
             // struct recover
