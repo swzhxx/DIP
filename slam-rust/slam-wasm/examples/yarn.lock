@@ -2515,6 +2515,10 @@ babylon@^7.0.0-beta.39:
   version "7.0.0-beta.47"
   resolved "https://registry.npm.taobao.org/babylon/download/babylon-7.0.0-beta.47.tgz#6d1fa44f0abec41ab7c780481e62fd9aafbdea80"
 
+babylonjs@^4.2.0:
+  version "4.2.0"
+  resolved "https://registry.npmmirror.com/babylonjs/download/babylonjs-4.2.0.tgz#8f0d957a726de4c065904b14c2f413f455145d38"
+
 balanced-match@^1.0.0:
   version "1.0.2"
   resolved "https://registry.npm.taobao.org/balanced-match/download/balanced-match-1.0.2.tgz?cache=0&sync_timestamp=1617714233441&other_urls=https%3A%2F%2Fregistry.npm.taobao.org%2Fbalanced-match%2Fdownload%2Fbalanced-match-1.0.2.tgz#e83e3a7e3f300b34cb9d87f615fa0cbf357690ee"

@@ -71,28 +71,31 @@ impl WrapperSingleViewRecover {
         let option_k =
             SingleViewRecover::compute_camera_params_from_vanshing_points(&vp1, &vp2, &vp3);
         if let Some(k) = option_k {
-            // web_sys::console::log_1(&format!("k {:?}", k).into());
-            let k_inv = k.into_nalgebra().try_inverse().unwrap().to_owned();
-            // let k_inv_raw_vec: Vec<f64> = k_inv.iter().map(|val| *val).collect();
-            let k_inv = k_inv.ref_ndarray2().into_owned();
-            let mut points_3d: Vec<f64> = vec![];
-            let mut colors: Vec<u8> = vec![];
-            // struct recover
-            for y in 0..height {
-                for x in 0..width {
-                    let coord_3d = k_inv.dot(&array![y as f64, x as f64, 1.]);
-                    let color = data.slice(s![y, x, ..]);
-                    points_3d.push(coord_3d[0]);
-                    points_3d.push(coord_3d[1]);
-                    points_3d.push(coord_3d[2]);
-                    colors.push(color[0]);
-                    colors.push(color[1]);
-                    colors.push(color[2]);
-                    colors.push(color[3]);
-                }
-            }
-            self.points3d = points_3d;
-            self.colors = colors;
+            todo!()
+            // 错误代码
+            // // web_sys::console::log_1(&format!("k {:?}", k).into());
+            // let k_inv = k.into_nalgebra().try_inverse().unwrap().to_owned();
+            // // let k_inv_raw_vec: Vec<f64> = k_inv.iter().map(|val| *val).collect();
+            // let k_inv = k_inv.ref_ndarray2().into_owned();
+            // web_sys::console::log_1(&format!("k_inv {:?}", k_inv).into());
+            // let mut points_3d: Vec<f64> = vec![];
+            // let mut colors: Vec<u8> = vec![];
+            // // struct recover
+            // for y in 0..height {
+            //     for x in 0..width {
+            //         let coord_3d = k_inv.dot(&array![x as f64, y as f64, 1.]);
+            //         let color = data.slice(s![y, x, ..]);
+            //         points_3d.push(coord_3d[0]);
+            //         points_3d.push(coord_3d[1]);
+            //         points_3d.push(coord_3d[2]);
+            //         colors.push(color[0]);
+            //         colors.push(color[1]);
+            //         colors.push(color[2]);
+            //         colors.push(color[3]);
+            //     }
+            // }
+            // self.points3d = points_3d;
+            // self.colors = colors;
         }
     }
 }

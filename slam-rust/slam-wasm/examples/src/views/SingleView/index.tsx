@@ -8,21 +8,44 @@ import React, {
 import { Slam } from '@/slam'
 // import { group } from 'console'
 import stf from '@/assets/image/1.jpg'
+import {
+  Scene,
+  Engine,
+  PointsCloudSystem,
+  PointLight,
+  ArcRotateCamera,
+  Vector3,
+  Color4,
+} from 'babylonjs'
 console.log(`stf`, stf)
 type Style = {
   width?: number
   height?: number
 }
 
+type Recover = {
+  points3d: Float64Array
+  colors: Uint8Array
+}
+
 const colors = ['red', 'green', 'blue']
 
 export default (): JSX.Element => {
   const canvasEl = useRef<HTMLCanvasElement>(null)
+  const canvas3dEl = useRef<HTMLCanvasElement>(null)
+  // 结构恢复的场景信息
+  const [recoverInfo, setRecoverInfo] = useState<Recover>({
+    points3d: new Float64Array(),
+    colors: new Uint8Array(),
+  })
+  // 图像信息
   const [imageData, setImageData] = useState<HTMLImageElement | null>(null)
+  // 样式信息
   const [style, setStyle] = useState<Style>({
     width: imageData?.width,
     height: imageData?.height,
   })
+  const [isRecovered, setIsRecovered] = useState<boolean>(false)
   const [parallelLines, setParallelLines] = useState<Array<number>>([
     674, 1826, 2456, 1060, 1094, 1340, 1774, 1086, 674, 1826, 126, 1056, 2456,
     1060, 1940, 866, 1094, 1340, 1080, 598, 1774, 1086, 1840, 478,
@@ -41,6 +64,14 @@ export default (): JSX.Element => {
   useEffect(() => {
     setTimeout(refreshCanvas)
   }, [imageData, canvasEl, parallelLines])
+
+  useEffect(() => {
+    if (!isRecovered) {
+      return
+    }
+    renderPCS()
+  }, [isRecovered])
+
   const refreshCanvas = () => {
     const context = getContext()
     if (!context || !imageData) return
@@ -148,11 +179,67 @@ export default (): JSX.Element => {
       image,
       new Float64Array(parallelLines)
     )
-    let point3ds = singleViewRecover.get_own_points3d()
+    let points3d = singleViewRecover.get_own_points3d()
+    console.log(`points3d`, points3d)
     let colors = singleViewRecover.get_own_colors()
-    console.log(point3ds, colors)
+    if (points3d.length) {
+      setRecoverInfo({
+        points3d,
+        colors,
+      })
+      setIsRecovered(true)
+    }
   }
-  // const onCanvasMouseUp = (event: MouseEvent) => {}
+
+  const renderPCS = () => {
+    const el = canvas3dEl.current
+    if (!el) {
+      return
+    }
+    const engine = new Engine(el, true)
+    const createScene = (): Scene => {
+      let scene = new Scene(engine)
+      var camera = new ArcRotateCamera(
+        'Camera',
+        -Math.PI / 2,
+        Math.PI / 3,
+        8,
+        new Vector3(0, 0, 0),
+        scene
+      )
+      camera.attachControl(el, true)
+
+      var pcs = new PointsCloudSystem('pcs', 2, scene)
+
+      var setPoint = function (
+        particle: { position: Vector3; color: Color4 },
+        i: number,
+        s: any
+      ) {
+        //diff between using i and s can be seen by removing comment marker from line 14
+        particle.position = new Vector3(
+          recoverInfo.points3d[3 * i] * 10000,
+          recoverInfo.points3d[3 * i + 1] * 10000,
+          recoverInfo.points3d[3 * i + 2] * 10000
+        )
+        //particle.position = new BABYLON.Vector3(particle.groupId * 0.5 + 0.25 * Math.random(), s / 5000, 0.25 * Math.random());
+        particle.color = new Color4(
+          recoverInfo.colors[4 * i],
+          recoverInfo.colors[4 * i + 2],
+          recoverInfo.colors[4 * i + 3],
+          recoverInfo.colors[4 * i + 4]
+        )
+      }
+      pcs.addPoints(10000, setPoint)
+      pcs.buildMeshAsync()
+      return scene
+    }
+    const scene = createScene()
+    engine.runRenderLoop(function () {
+      scene.render()
+    })
+  }
+
   return (
     <div>
       <input type='file' accept='image/*' onChange={handleUploadImage} />
@@ -164,6 +251,14 @@ export default (): JSX.Element => {
         height={style.height}
         ref={canvasEl}
       ></canvas>
+
+      {isRecovered && (
+        <canvas
+          width={style.width}
+          height={style.height}
+          ref={canvas3dEl}
+        ></canvas>
+      )}
     </div>
   )
 }
