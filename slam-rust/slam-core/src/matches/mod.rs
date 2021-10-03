@@ -14,8 +14,8 @@ pub struct DMatch<T>
 where
     T: Match,
 {
-    i1: usize,
-    i2: usize,
+    pub i1: usize,
+    pub i2: usize,
     distance: T,
 }
 

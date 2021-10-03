@@ -11,7 +11,7 @@ use crate::{
 
 pub type BriefDescriptor = Vec<u32>;
 
-pub trait OrbT: Match + Mul + Zero + ToPrimitive + Copy + Add + From<i32> + PartialOrd {}
+pub trait OrbT: Match + Mul + Zero + ToPrimitive + Copy + Add + PartialOrd {}
 
 const ORB_PATTERN: [i32; 256 * 4] = [
     8, -3, 9, 5, /*mean (0), correlation (0)*/
@@ -273,19 +273,13 @@ const ORB_PATTERN: [i32; 256 * 4] = [
 ];
 
 #[derive(Debug)]
-struct Orb<'a, T>
-where
-    T: Match + Num + OrbT + AsPrimitive<T>,
-{
+pub struct Orb<'a> {
     keypoints: &'a Vec<Point2<usize>>,
-    data: &'a Array2<T>,
+    data: &'a Array2<f64>,
 }
 
-impl<T> Orb<'_, T>
-where
-    T: Match + Num + OrbT + AsPrimitive<T>,
-{
-    pub fn new<'a>(data: &'a Array2<T>, keypoints: &'a Vec<Point2<usize>>) -> Orb<'a, T> {
+impl Orb<'_> {
+    pub fn new<'a>(data: &'a Array2<f64>, keypoints: &'a Vec<Point2<usize>>) -> Orb<'a> {
         Orb {
             keypoints: keypoints,
             data,
@@ -308,8 +302,8 @@ where
                 continue;
             }
 
-            let mut m01 = T::zero();
-            let mut m10 = T::zero();
+            let mut m01 = 0.;
+            let mut m10 = 0.;
 
             for dy in -half_patch_size..half_patch_size {
                 for dx in -half_patch_size..half_patch_size {
@@ -317,10 +311,9 @@ where
                         .data
                         .get((kp.y + dy as usize, kp.x + dx as usize))
                         .unwrap();
-                    let dxt: T = dx.into();
-                    let dyt: T = dy.into();
-                    m10 = m10 + dxt * *pixel;
-                    m01 = m01 + dyt * *pixel;
+
+                    m10 = m10 + (dx as f64) * *pixel;
+                    m01 = m01 + (dy as f64) * *pixel;
                 }
             }
 
