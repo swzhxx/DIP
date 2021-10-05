@@ -16,17 +16,17 @@ where
 {
     pub i1: usize,
     pub i2: usize,
-    distance: T,
+    pub distance: T,
 }
 
 pub fn hanming_distance(mut distance: usize) -> usize {
     let mut count = 0;
     loop {
-        count = count + 1;
         distance = distance & (distance - 1);
         if distance == 0 {
             break;
         }
+        count = count + 1;
     }
     count
 }

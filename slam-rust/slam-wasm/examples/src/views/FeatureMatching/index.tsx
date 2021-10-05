@@ -70,8 +70,18 @@ export default (): JSX.Element => {
   }, [])
 
   useEffect(() => {
-    let matching = Slam.feature_point_matching(images[0], images[1], 40)
-    drawMathingResult(matching)
+    if (images.length != 2) {
+      return
+    }
+    let orb = new Slam.OrbFeatureMatcher(images[0], images[1])
+    orb.feature_point_matching(55)
+    // let matching = Slam.feature_point_matching(images[0], images[1], 80)
+    console.log(orb.get_feature_points_1())
+    drawMathingResult(
+      orb.get_feature_points_1(),
+      orb.get_feature_points_2(),
+      orb.get_matched()
+    )
   }, [images])
 
   const handleUploadImage = async (event: ChangeEvent) => {
@@ -91,7 +101,11 @@ export default (): JSX.Element => {
     setImages(images)
   }
 
-  const drawMathingResult = (matched: Uint32Array) => {
+  const drawMathingResult = (
+    features1: Uint32Array,
+    feautres2: Uint32Array,
+    matched: Uint32Array
+  ) => {
     console.log(`matched`, matched)
     let image1Width = images[0].width
     let image1Height = images[0].height

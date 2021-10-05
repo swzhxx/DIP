@@ -26,6 +26,7 @@ pub fn rgba_to_gray(img: &Array3<u8>) -> Array2<u8> {
         }
     }
     let gray_data = Array2::from_shape_vec((height, width), color_data).unwrap();
+    // web_sys::console::log_1(&format!("gray data {:?}", gray_data).into());
     gray_data
 }
 

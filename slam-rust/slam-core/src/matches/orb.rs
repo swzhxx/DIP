@@ -357,10 +357,8 @@ impl Orb<'_> {
      * brief match
      * @param { usize } 门限，大于该值的将不会被匹配
      */
-    pub fn brief_match<'a, U>(
-        first_data: &'a Array2<U>,
+    pub fn brief_match<'a>(
         first_descriptors: &'a Vec<BriefDescriptor>,
-        second_data: &'a Array2<U>,
         second_descripors: &'a Vec<BriefDescriptor>,
         threshold: usize,
     ) -> Vec<DMatch<usize>> {
