@@ -309,7 +309,7 @@ impl Orb<'_> {
                 for dx in -half_patch_size..half_patch_size {
                     let pixel = self
                         .data
-                        .get((kp.y + dy as usize, kp.x + dx as usize))
+                        .get(((kp.y as i32 + dy) as usize, (kp.x as i32 + dx) as usize))
                         .unwrap();
 
                     m10 = m10 + (dx as f64) * *pixel;
@@ -341,7 +341,8 @@ impl Orb<'_> {
                         (cos_theta * (q.x) as f64 - sin_theta * (q.y) as f64) as usize,
                         (sin_theta * (q.x) as f64 + cos_theta * (q.y) as f64) as usize,
                     );
-                    if *self.data.get((pp.y, pp.x)).unwrap() < *self.data.get((qq.y, qq.x)).unwrap()
+                    if *self.data.get((pp.y, pp.x)).unwrap_or(&256.)
+                        < *self.data.get((qq.y, qq.x)).unwrap_or(&256.)
                     {
                         d = d | (1 << k);
                     };
@@ -386,4 +387,9 @@ impl Orb<'_> {
         }
         matches
     }
+}
+
+#[cfg(test)]
+mod test {
+    fn test_create_descriptors() {}
 }

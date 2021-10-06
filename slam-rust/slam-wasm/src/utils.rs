@@ -16,17 +16,24 @@ pub fn rgba_to_gray(img: &Array3<u8>) -> Array2<u8> {
     let shape = img.shape();
     let height = shape[0];
     let width = shape[1];
-
+    web_sys::console::log_1(&format!("img{:?}", img).into());
     let mut color_data = vec![];
     for y in 0..height {
         for x in 0..width {
             let rgba = img.slice(s![y, x, ..]);
-            let gray = (rgba[0] * 30 + rgba[1] * 59 + rgba[2] * 11 + 50) / 100;
+            let gray =
+                ((rgba[0] as usize) * 30 + (rgba[1] as usize) * 59 + (rgba[2] as usize) * 11 + 50)
+                    / 100;
+            let gray = gray as u8;
+            // if y == 0 && x == 0 {
+            //     web_sys::console::log_1(&format!("rgba {:?}", rgba).into());
+            //     web_sys::console::log_1(&format!("gray {:?}", gray).into());
+            // }
             color_data.push(gray)
         }
     }
     let gray_data = Array2::from_shape_vec((height, width), color_data).unwrap();
-    // web_sys::console::log_1(&format!("gray data {:?}", gray_data).into());
+    web_sys::console::log_1(&format!("gray data {:?}", gray_data).into());
     gray_data
 }
 
