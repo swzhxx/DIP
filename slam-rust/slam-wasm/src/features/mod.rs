@@ -45,7 +45,7 @@ impl OrbFeatureMatcher {
         self.matched.clone()
     }
 
-    pub fn feature_point_matching(&mut self, threshold: usize) {
+    pub fn feature_point_matching(&mut self, threshold: usize, featureThreshold: Option<f64>) {
         let image_1 = &self.image_1;
         let image_2 = &self.image_2;
         let gray_image_data_1: Array2<f64> = Array2::from_shape_vec(
@@ -68,10 +68,10 @@ impl OrbFeatureMatcher {
 
         let ofast_1 = OFast::new(&gray_image_data_1);
         let ofast_2 = OFast::new(&gray_image_data_2);
-        // web_sys::console::log_1(&format!("{:?}", ofast_1).into());
+        // web_sys::console::log_1(&format!(" gray_image_data_1 {:?}", gray_image_data_1).into());
 
-        let features_1 = ofast_1.find_features();
-        let features_2 = ofast_2.find_features();
+        let features_1 = ofast_1.find_features(featureThreshold);
+        let features_2 = ofast_2.find_features(featureThreshold);
         self.feature_points_1 = features_1.iter().fold(vec![], |mut acc, p| {
             acc.push(p.x);
             acc.push(p.y);
@@ -82,11 +82,12 @@ impl OrbFeatureMatcher {
             acc.push(p.y);
             acc
         });
-
+        web_sys::console::log_1(&format!("feature_points_1 {:?}", &self.feature_points_1).into());
+        web_sys::console::log_1(&format!("create descriptors").into());
         let descriptors_1 = Orb::new(&gray_image_data_1, &features_1).create_descriptors();
-        web_sys::console::log_1(&format!(" descriptors_1 {:?}", descriptors_1).into());
+        // web_sys::console::log_1(&format!(" descriptors_1 {:?}", descriptors_1).into());
         let descriptors_2 = Orb::new(&gray_image_data_2, &features_2).create_descriptors();
-        web_sys::console::log_1(&format!(" descriptors_2 {:?}", descriptors_2).into());
+        // web_sys::console::log_1(&format!(" descriptors_2 {:?}", descriptors_2).into());
         let matched = Orb::brief_match(&descriptors_1, &descriptors_2, threshold);
 
         let match_points: Vec<usize> = matched.iter().fold(vec![], |mut acc, ele| {

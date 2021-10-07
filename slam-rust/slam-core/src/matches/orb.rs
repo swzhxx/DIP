@@ -293,6 +293,7 @@ impl Orb<'_> {
         let rows = shape[0];
         let columns = shape[1];
         let mut descriptors: Vec<BriefDescriptor> = vec![];
+
         for kp in self.keypoints {
             if kp.x < half_boundary as usize
                 || kp.y < half_boundary as usize
@@ -310,7 +311,7 @@ impl Orb<'_> {
                     let pixel = self
                         .data
                         .get(((kp.y as i32 + dy) as usize, (kp.x as i32 + dx) as usize))
-                        .unwrap();
+                        .unwrap_or(&0.);
 
                     m10 = m10 + (dx as f64) * *pixel;
                     m01 = m01 + (dy as f64) * *pixel;

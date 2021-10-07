@@ -1,7 +1,17 @@
-import React, { ChangeEvent, useEffect, useState } from 'react'
+import React, { ChangeEvent, useEffect, useState, useRef } from 'react'
 import { Slam } from '@/slam'
-import House1 from '@/assets/image/image1.jpg'
-import House2 from '@/assets/image/image2.jpg'
+import House1 from '@/assets/image/1.png'
+import House2 from '@/assets/image/2.png'
+
+type CanvasRect = {
+  width: number
+  height: number
+}
+
+type Point = {
+  x: number
+  y: number
+}
 
 const fileToImageELement = (file: File): Promise<HTMLImageElement> => {
   return new Promise((resolve, reject) => {
@@ -18,6 +28,8 @@ const fileToImageELement = (file: File): Promise<HTMLImageElement> => {
 
 const imageElementToImageData = (imageElement: HTMLImageElement) => {
   const canvas = document.createElement('canvas')
+  canvas.width = imageElement.width
+  canvas.height = imageElement.height
   const context = canvas.getContext('2d')
   if (!context) return
   context.drawImage(imageElement, 0, 0, imageElement.width, imageElement.height)
@@ -43,13 +55,9 @@ const initImageElement = async (src: string): Promise<HTMLImageElement> => {
   })
 }
 
-type CanvasRect = {
-  width: number
-  height: number
-}
-
 export default (): JSX.Element => {
   const [images, setImages] = useState<Array<ImageData>>([])
+  const canvasRef = useRef<HTMLCanvasElement>(null)
   const [isMatched, setIsMatched] = useState<boolean>(false)
   const [canvasReact, setCanvasRect] = useState<CanvasRect>({
     width: 0,
@@ -74,9 +82,9 @@ export default (): JSX.Element => {
       return
     }
     let orb = new Slam.OrbFeatureMatcher(images[0], images[1])
-    orb.feature_point_matching(55)
+    orb.feature_point_matching(40, 10)
     // let matching = Slam.feature_point_matching(images[0], images[1], 80)
-    console.log(orb.get_feature_points_1())
+
     drawMathingResult(
       orb.get_feature_points_1(),
       orb.get_feature_points_2(),
@@ -97,13 +105,13 @@ export default (): JSX.Element => {
       let imageData = await fileToImageData(files[0])
       images.push(imageData)
     }
-    console.log(images)
+
     setImages(images)
   }
 
   const drawMathingResult = (
     features1: Uint32Array,
-    feautres2: Uint32Array,
+    features2: Uint32Array,
     matched: Uint32Array
   ) => {
     console.log(`matched`, matched)
@@ -111,19 +119,146 @@ export default (): JSX.Element => {
     let image1Height = images[0].height
     let image2Width = images[0].width
     let image2Height = images[0].height
+    let padding1X = 0
+    let padding1Y = 0
+    let padding2X = 0
+    let padding2Y = 0
     if (image1Width != image2Width || image1Height != image2Height) {
-      //TODO: padding
+      //padding
+      if (image1Width - image2Width > 0) {
+        padding2X = Math.floor((image1Width - image2Width) / 2)
+      } else {
+        padding1X = Math.floor((image2Width - image1Width) / 2)
+      }
+
+      if (image1Height - image2Height > 0) {
+        padding2Y = Math.floor((image1Height - image2Height) / 2)
+      } else {
+        padding1Y = Math.floor((image1Height - image2Height) / 2)
+      }
     }
+
+    if (images.length != 2) {
+      return
+    }
+    setCanvasRect({
+      width: padding1X * 2 + images[0].width + padding2X * 2 + images[1].width,
+      height:
+        padding1Y * 2 + images[0].height + padding2Y * 2 + images[1].height,
+    })
+    // console.log(`images`, images[0], images[1])
+    setTimeout(() => {
+      let context = canvasRef.current?.getContext('2d')
+      if (context == null) {
+        return
+      }
+      context.putImageData(
+        images[0],
+        padding1X,
+        padding1Y,
+        0,
+        0,
+        images[0].width,
+        images[0].height
+      )
+      context.putImageData(
+        images[1],
+        padding1X * 2 + images[0].width,
+        padding2Y,
+        0,
+        0,
+        images[1].width,
+        images[1].height
+      )
+
+      let points: Array<Point> = []
+
+      for (let i = 0; i < matched.length; i = i + 3) {
+        let index1 = matched[i]
+        let index2 = matched[i + 1]
+        let point1 = {
+          x: features1[index1 * 2] + padding1X,
+          y: features1[index1 * 2 + 1] + padding1Y,
+        }
+        let point2 = {
+          x:
+            features2[index2 * 2] + padding2X + images[0].width + padding1X * 2,
+          y: features2[index2 * 2 + 1] + padding2Y,
+        }
+        points.push(point1)
+        points.push(point2)
+        if (points.length > 20) {
+          break
+        }
+      }
+      // for (let i = 0; i < features1.length; i = i + 2) {
+      //   let point1 = {
+      //     x: features1[i * 2] + padding1X,
+      //     y: features1[i * 2 + 1] + padding1Y,
+      //   }
+      //   // let point2 = {
+      //   //   x: features2[i * 2] + padding2X + images[0].width,
+      //   //   y: features2[i * 2 + 1] + padding2Y,
+      //   // }
+      //   points.push(point1)
+      //   // points.push(point2)
+      // }
+
+      // for (let i = 0; i < features2.length; i = i + 2) {
+      //   let point2 = {
+      //     x: features2[i * 2] + padding2X + images[0].width + padding1X * 2,
+      //     y: features2[i * 2 + 1] + padding2Y,
+      //   }
+      //   points.push(point2)
+      //   // points.push(point2)
+      // }
+
+      console.log(`points`, points)
+      let colors = ['red', 'blue', 'yellow', 'green', 'pink', 'aqua']
+      points.forEach((p, index) => {
+        // if (index >= 10) return
+        if (index > 0 && index % 2 == 1) {
+          context!.beginPath()
+          context!.arc(
+            points[index - 1].x,
+            points[index - 1].y,
+            2,
+            0,
+            Math.PI * 2
+          )
+          context!.fillStyle = colors[(index + 1) % colors.length]
+          context!.fill()
+          context!.beginPath()
+          context!.arc(p.x, p.y, 2, 0, Math.PI * 2)
+          context!.fillStyle = colors[(index + 1) % colors.length]
+          context!.fill()
+          context!.beginPath()
+          context!.moveTo(points[index - 1].x, points[index - 1].y)
+          context!.lineTo(p.x, p.y)
+          context!.strokeStyle = colors[(index + 1) % colors.length]
+          context!.stroke()
+        }
+      })
+    })
   }
   return (
     <div>
-      <input
-        type='file'
-        accept='image/*'
-        multiple
-        onChange={handleUploadImage}
-      />
-      <button>特征点匹配</button>
+      <div>
+        <input
+          type='file'
+          accept='image/*'
+          multiple
+          onChange={handleUploadImage}
+        />
+        <button>特征点匹配</button>
+      </div>
+      {
+        <canvas
+          width={canvasReact.width}
+          height={canvasReact.height}
+          ref={canvasRef}
+        ></canvas>
+      }
     </div>
   )
 }
