@@ -22,11 +22,23 @@ where
 pub fn hanming_distance(mut distance: usize) -> usize {
     let mut count = 0;
     loop {
-        distance = distance & (distance - 1);
         if distance == 0 {
             break;
         }
         count = count + 1;
+        distance = distance & (distance - 1);
     }
     count
+}
+
+#[cfg(test)]
+mod test {
+    use super::*;
+    #[test]
+    fn test_hanming_distance() {
+        let v3 = 5usize;
+        let v4 = 1usize;
+
+        assert_eq!(1, hanming_distance(v3 ^ v4));
+    }
 }

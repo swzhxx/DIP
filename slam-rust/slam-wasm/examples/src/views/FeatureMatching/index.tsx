@@ -23,6 +23,7 @@ const fileToImageELement = (file: File): Promise<HTMLImageElement> => {
       }
       image.src = reader.result as string
     }
+    reader.readAsDataURL(file)
   })
 }
 
@@ -82,7 +83,7 @@ export default (): JSX.Element => {
       return
     }
     let orb = new Slam.OrbFeatureMatcher(images[0], images[1])
-    orb.feature_point_matching(40, 10)
+    orb.feature_point_matching(30, 10)
     // let matching = Slam.feature_point_matching(images[0], images[1], 80)
 
     drawMathingResult(
@@ -99,10 +100,11 @@ export default (): JSX.Element => {
     }
     if (files.length != 2) {
       alert('仅支持提交2个图片')
+      return
     }
     let images = []
     for (let i = 0; i < files.length; i++) {
-      let imageData = await fileToImageData(files[0])
+      let imageData = await fileToImageData(files[i])
       images.push(imageData)
     }
 
@@ -187,9 +189,6 @@ export default (): JSX.Element => {
         }
         points.push(point1)
         points.push(point2)
-        if (points.length > 20) {
-          break
-        }
       }
       // for (let i = 0; i < features1.length; i = i + 2) {
       //   let point1 = {
@@ -214,7 +213,7 @@ export default (): JSX.Element => {
       // }
 
       console.log(`points`, points)
-      let colors = ['red', 'blue', 'yellow', 'green', 'pink', 'aqua']
+      let colors = ['red', 'blue', 'yellow', 'white', 'pink', 'aqua']
       points.forEach((p, index) => {
         // if (index >= 10) return
         if (index > 0 && index % 2 == 1) {
@@ -226,16 +225,17 @@ export default (): JSX.Element => {
             0,
             Math.PI * 2
           )
-          context!.fillStyle = colors[(index + 1) % colors.length]
+          let color = colors[Math.ceil(Math.random() * 10) % 6]
+          context!.fillStyle = color
           context!.fill()
           context!.beginPath()
           context!.arc(p.x, p.y, 2, 0, Math.PI * 2)
-          context!.fillStyle = colors[(index + 1) % colors.length]
+          context!.fillStyle = color
           context!.fill()
           context!.beginPath()
           context!.moveTo(points[index - 1].x, points[index - 1].y)
           context!.lineTo(p.x, p.y)
-          context!.strokeStyle = colors[(index + 1) % colors.length]
+          context!.strokeStyle = color
           context!.stroke()
         }
       })

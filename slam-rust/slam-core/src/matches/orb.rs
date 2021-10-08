@@ -290,6 +290,7 @@ impl Orb<'_> {
         let half_patch_size: i32 = 8;
         let half_boundary: i32 = 16;
         let shape = self.data.shape();
+        let data_len = self.data.len();
         let rows = shape[0];
         let columns = shape[1];
         let mut descriptors: Vec<BriefDescriptor> = vec![];
@@ -318,11 +319,11 @@ impl Orb<'_> {
                 }
             }
 
-            let m10float = m10.to_f64().unwrap();
-            let m01float = m01.to_f64().unwrap();
-            let m_sqrt: f64 = ((m10float * m10float + m01float * m01float) + 1e-18f64).sqrt();
-            let sin_theta = m01float / m_sqrt;
-            let cos_theta = m10float / m_sqrt;
+            // let m10float = m10.to_f64().unwrap();
+            // let m01float = m01.to_f64().unwrap();
+            let m_sqrt: f64 = ((m10 * m10 + m01 * m01) + 1e-18f64).sqrt();
+            let sin_theta = m01 / m_sqrt;
+            let cos_theta = m10 / m_sqrt;
 
             let mut desc: BriefDescriptor = vec![];
             for i in 0..8 {
@@ -334,16 +335,28 @@ impl Orb<'_> {
 
                     // rotate with theta
                     let pp = Point2::new(
-                        (cos_theta * (p.x) as f64 - sin_theta * (p.y) as f64) as usize,
-                        (sin_theta * (p.x) as f64 + cos_theta * (p.y) as f64) as usize,
+                        (cos_theta * (p.x) as f64 - sin_theta * (p.y) as f64) + kp.x as f64,
+                        (sin_theta * (p.x) as f64 + cos_theta * (p.y) as f64) + kp.y as f64,
                     );
 
                     let qq = Point2::new(
-                        (cos_theta * (q.x) as f64 - sin_theta * (q.y) as f64) as usize,
-                        (sin_theta * (q.x) as f64 + cos_theta * (q.y) as f64) as usize,
+                        (cos_theta * (q.x) as f64 - sin_theta * (q.y) as f64) + kp.x as f64,
+                        (sin_theta * (q.x) as f64 + cos_theta * (q.y) as f64) + kp.y as f64,
                     );
-                    if *self.data.get((pp.y, pp.x)).unwrap_or(&256.)
-                        < *self.data.get((qq.y, qq.x)).unwrap_or(&256.)
+                    if self
+                        .data
+                        .get((
+                            pp.y.to_usize().unwrap_or(data_len),
+                            pp.x.to_usize().unwrap_or(data_len),
+                        ))
+                        .unwrap_or(&256.)
+                        < self
+                            .data
+                            .get((
+                                qq.y.to_usize().unwrap_or(data_len),
+                                qq.x.to_usize().unwrap_or(data_len),
+                            ))
+                            .unwrap_or(&256.)
                     {
                         d = d | (1 << k);
                     };
@@ -374,8 +387,7 @@ impl Orb<'_> {
             for (i2, s_desc) in second_descripors.iter().enumerate() {
                 let mut distance = 0;
                 for k in 0..8 {
-                    distance =
-                        distance + hanming_distance((f_desc[k] as usize) ^ (s_desc[k] as usize));
+                    distance = distance + hanming_distance((f_desc[k] ^ s_desc[k]) as usize);
                 }
                 if distance < dmatch.distance {
                     dmatch.distance = distance;
