@@ -83,7 +83,7 @@ export default (): JSX.Element => {
       return
     }
     let orb = new Slam.OrbFeatureMatcher(images[0], images[1])
-    orb.feature_point_matching(30, 10)
+    orb.feature_point_matching(40, 40)
     // let matching = Slam.feature_point_matching(images[0], images[1], 80)
 
     drawMathingResult(
@@ -116,6 +116,8 @@ export default (): JSX.Element => {
     features2: Uint32Array,
     matched: Uint32Array
   ) => {
+    console.log(`features1`, features1)
+    console.log(`features2`, features2)
     console.log(`matched`, matched)
     let image1Width = images[0].width
     let image1Height = images[0].height
@@ -211,6 +213,18 @@ export default (): JSX.Element => {
       //   points.push(point2)
       //   // points.push(point2)
       // }
+      const drawFeatures = (features: Uint32Array, offset = { x: 0, y: 0 }) => {
+        for (let i = 1; i < features.length; i = i + 2) {
+          let x = features[i - 1]
+          let y = features[i]
+          context!.beginPath()
+          context!.arc(x + offset.x, y + offset.y, 3, 0, Math.PI * 2)
+          context!.strokeStyle = 'purple'
+          context!.stroke()
+        }
+      }
+      drawFeatures(features1)
+      drawFeatures(features2, { x: images[0].width, y: 0 })
 
       console.log(`points`, points)
       let colors = ['red', 'blue', 'yellow', 'white', 'pink', 'aqua']
@@ -221,7 +235,7 @@ export default (): JSX.Element => {
           context!.arc(
             points[index - 1].x,
             points[index - 1].y,
-            2,
+            5,
             0,
             Math.PI * 2
           )
@@ -229,7 +243,7 @@ export default (): JSX.Element => {
           context!.fillStyle = color
           context!.fill()
           context!.beginPath()
-          context!.arc(p.x, p.y, 2, 0, Math.PI * 2)
+          context!.arc(p.x, p.y, 5, 0, Math.PI * 2)
           context!.fillStyle = color
           context!.fill()
           context!.beginPath()

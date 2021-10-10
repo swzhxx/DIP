@@ -290,16 +290,15 @@ impl Orb<'_> {
         let half_patch_size: i32 = 8;
         let half_boundary: i32 = 16;
         let shape = self.data.shape();
-        let data_len = self.data.len();
         let rows = shape[0];
         let columns = shape[1];
         let mut descriptors: Vec<BriefDescriptor> = vec![];
 
         for kp in self.keypoints {
-            if kp.x < half_boundary as usize
-                || kp.y < half_boundary as usize
-                || kp.x >= rows - half_boundary as usize
-                || kp.y >= columns - half_boundary as usize
+            if kp.x < half_boundary as usize + 4 // 补4 放置rotate的时候，斜边溢出
+                || kp.y < half_boundary as usize + 4
+                || kp.x >= columns - half_boundary as usize - 4
+                || kp.y >= rows - half_boundary as usize - 4
             {
                 continue;
             }
@@ -312,7 +311,7 @@ impl Orb<'_> {
                     let pixel = self
                         .data
                         .get(((kp.y as i32 + dy) as usize, (kp.x as i32 + dx) as usize))
-                        .unwrap_or(&0.);
+                        .expect(&format!(" dy , dx {:?} {:?}", dy, dx));
 
                     m10 = m10 + (dx as f64) * *pixel;
                     m01 = m01 + (dy as f64) * *pixel;
@@ -338,25 +337,34 @@ impl Orb<'_> {
                         (cos_theta * (p.x) as f64 - sin_theta * (p.y) as f64) + kp.x as f64,
                         (sin_theta * (p.x) as f64 + cos_theta * (p.y) as f64) + kp.y as f64,
                     );
-
+                    // if pp.x.to_usize() == None || pp.y.to_usize() == None {
+                    //     continue;
+                    // }
                     let qq = Point2::new(
                         (cos_theta * (q.x) as f64 - sin_theta * (q.y) as f64) + kp.x as f64,
                         (sin_theta * (q.x) as f64 + cos_theta * (q.y) as f64) + kp.y as f64,
                     );
+                    // if qq.x.to_usize() == None || qq.y.to_usize() == None {
+                    //     continue;
+                    // }
+                    // if qq.x.to_usize().unwrap() >= columns
+                    //     || qq.y.to_usize().unwrap() >= rows
+                    //     || pp.x.to_usize().unwrap() >= columns
+                    //     || pp.y.to_usize().unwrap() >= rows
+                    // {
+                    //     continue;
+                    // }
                     if self
                         .data
-                        .get((
-                            pp.y.to_usize().unwrap_or(data_len),
-                            pp.x.to_usize().unwrap_or(data_len),
-                        ))
-                        .unwrap_or(&256.)
+                        .get((pp.y as usize, pp.x as usize))
+                        .expect(&format!(" pp.y pp.x {:?} {:?}", pp.y, pp.x))
                         < self
                             .data
-                            .get((
-                                qq.y.to_usize().unwrap_or(data_len),
-                                qq.x.to_usize().unwrap_or(data_len),
+                            .get((qq.y as usize, qq.x as usize))
+                            .expect(&format!(
+                                " qq.y qq.x {:?} {:?} , kp.y{:?} , kp.x{:?}",
+                                qq.y, qq.x, kp.y, kp.x
                             ))
-                            .unwrap_or(&256.)
                     {
                         d = d | (1 << k);
                     };
@@ -375,19 +383,19 @@ impl Orb<'_> {
     pub fn brief_match<'a>(
         first_descriptors: &'a Vec<BriefDescriptor>,
         second_descripors: &'a Vec<BriefDescriptor>,
-        threshold: usize,
-    ) -> Vec<DMatch<usize>> {
+        threshold: u32,
+    ) -> Vec<DMatch<u32>> {
         let mut matches = vec![];
         for (i1, f_desc) in first_descriptors.iter().enumerate() {
             let mut dmatch = DMatch {
                 i1: i1,
                 i2: 0 as usize,
-                distance: 256 as usize,
+                distance: 256 as u32,
             };
             for (i2, s_desc) in second_descripors.iter().enumerate() {
                 let mut distance = 0;
                 for k in 0..8 {
-                    distance = distance + hanming_distance((f_desc[k] ^ s_desc[k]) as usize);
+                    distance = distance + hanming_distance((f_desc[k] ^ s_desc[k]) as u32);
                 }
                 if distance < dmatch.distance {
                     dmatch.distance = distance;

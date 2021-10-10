@@ -8,6 +8,7 @@ pub mod orb;
 pub trait Match: Num + PartialOrd + Copy + Debug {}
 
 impl Match for usize {}
+impl Match for u32 {}
 
 #[derive(Debug)]
 pub struct DMatch<T>
@@ -19,7 +20,7 @@ where
     pub distance: T,
 }
 
-pub fn hanming_distance(mut distance: usize) -> usize {
+pub fn hanming_distance(mut distance: u32) -> u32 {
     let mut count = 0;
     loop {
         if distance == 0 {
@@ -36,8 +37,8 @@ mod test {
     use super::*;
     #[test]
     fn test_hanming_distance() {
-        let v3 = 5usize;
-        let v4 = 1usize;
+        let v3 = 5;
+        let v4 = 1;
 
         assert_eq!(1, hanming_distance(v3 ^ v4));
     }

@@ -68,8 +68,8 @@ where
                             && distance > right_distance
                             && distance > bottom_distance
                         {
-                            features.push(Point2::new(col_i, row_i));
-                        }
+                    features.push(Point2::new(col_i, row_i));
+                    }
                     }
                 }
             }
