@@ -1,4 +1,7 @@
-use nalgebra::DMatrix;
+use nalgebra::{
+    allocator::Allocator, ComplexField, DMatrix, DefaultAllocator, Dim, DimDiff, DimMin,
+    DimMinimum, DimSub, SVD, U1,
+};
 
 pub fn compute_min_vt_eigen_vector(m: &DMatrix<f64>) -> Vec<f64> {
     let v = m.transpose() * m;
@@ -13,6 +16,15 @@ pub fn compute_min_vt_eigen_vector(m: &DMatrix<f64>) -> Vec<f64> {
     let column = u.column(ix);
     let min_eigen_vector: Vec<f64> = column.into_iter().map(|v| *v).collect();
     min_eigen_vector
+}
+
+pub fn sort_svd<T, R, C>(svd: &mut SVD<T, R, C>)
+where
+    T: ComplexField,
+    R: DimMin<C>,
+    C: Dim,
+{
+    todo!()
 }
 
 #[cfg(test)]

@@ -1,10 +1,11 @@
+use crate::svd::{compute_min_vt_eigen_vector, sort_svd};
 use crate::{
     matches::{DMatch, Match},
     point::{Point2, Point3},
 };
 use nalgebra::{Const, Dim, Dynamic, Matrix3xX};
 use ndarray::{Array1, Array2, Axis};
-use nshare::ToNalgebra;
+use nshare::{RefNdarray2, ToNalgebra};
 use num_traits::{AsPrimitive, Float, Num};
 
 /// **Eight Point Algorithm**
@@ -59,23 +60,37 @@ impl<'a> EightPoint<'_> {
                 .unwrap();
             }
 
-            let svd = w.view().into_nalgebra().svd(false, true);
-            let v_t = svd.v_t.unwrap();
-            let f = v_t.column(8);
-            
-
+            // let svd = w.view().into_nalgebra().svd(false, true);
+            // let v_t = svd.v_t.unwrap();
+            // let f = v_t.column(8);
+            let f = compute_min_vt_eigen_vector(&w.view().into_nalgebra().clone_owned());
+            let f = Matrix3xX::from_vec(f);
             let f: Matrix3xX<f64> = f
                 .clone_owned()
                 .reshape_generic(Const::<3>, Dynamic::from_usize(3));
 
             let mut f_svd = f.svd(true, true);
+            sort_svd(f_svd);
+            // let min_index =
+            //     f_svd
+            //         .singular_values
+            //         .iter()
+            //         .enumerate()
+            //         .fold(0, |minest, (index, item)| {
+            //             if &f_svd.singular_values[minest] <= &f_svd.singular_values[index] {
+            //                 minest
+            //             } else {
+            //                 index
+            //             }
+            //         });
             f_svd.singular_values[2] = 0.;
             let f_bar = f_svd.recompose().unwrap();
-            let mut res: Vec<f64> = vec![];
-            for val in f_bar.iter() {
-                res.push(*val);
-            }
-            let f_bar: Array2<f64> = Array2::from_shape_vec((3, 3), res).unwrap();
+            let f_bar = f_bar.ref_ndarray2().to_owned();
+            // let mut res: Vec<f64> = vec![];
+            // for val in f_bar.iter() {
+            //     res.push(*val);
+            // }
+            // let f_bar: Array2<f64> = Array2::from_shape_vec((3, 3), res).unwrap();
             Some(f_bar)
         }
     }
@@ -225,6 +240,8 @@ mod test {
 
         let mut ep = EightPoint::new(&points1, &points2);
         let fundamental = ep.normalize_find_fundamental();
-        println!("fundamental matrix {:?}", fundamental)
+        println!("normalize fundamental matrix {:?}", fundamental);
+        let fundamental = ep.find_fundamental();
+        println!("fundamental matrix {:?}", fundamental);
     }
 }
