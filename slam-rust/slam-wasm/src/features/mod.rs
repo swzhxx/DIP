@@ -1,5 +1,5 @@
 use crate::utils::{image_data_to_gray, set_panic_hook};
-use ndarray::Array2;
+use ndarray::{s, Array2};
 use slam_core::features::fast::OFast;
 use slam_core::matches::orb::{self, BriefDescriptor, Orb};
 use slam_core::matches::DMatch;
@@ -83,12 +83,13 @@ impl OrbFeatureMatcher {
             acc.push(p.y);
             acc
         });
-        // web_sys::console::log_1(&format!("feature_points_1 {:?}", &self.feature_points_1).into());
-        // web_sys::console::log_1(&format!("create descriptors").into());
+
         let descriptors_1 = Orb::new(&gray_image_data_1, &features_1).create_descriptors();
         web_sys::console::log_1(&format!(" descriptors_1 {:?}", descriptors_1).into());
+
         let descriptors_2 = Orb::new(&gray_image_data_2, &features_2).create_descriptors();
         web_sys::console::log_1(&format!(" descriptors_2 {:?}", descriptors_2).into());
+
         let matched = Orb::brief_match(&descriptors_1, &descriptors_2, threshold);
 
         let match_points: Vec<usize> = matched.iter().fold(vec![], |mut acc, ele| {
@@ -98,6 +99,5 @@ impl OrbFeatureMatcher {
             acc
         });
         self.matched = match_points;
-        // match_points
     }
 }

@@ -53,7 +53,7 @@ where
                 }
 
                 if self.is_feature(row_i, col_i, t) {
-                    // 非极大值抑止
+                    //// 非极大值抑止
                     if let Some(distance) = self.compute_distance(col_i, row_i) {
                         let left_distance =
                             self.compute_distance(col_i - 1, row_i).unwrap_or(T::zero());
@@ -68,8 +68,8 @@ where
                             && distance > right_distance
                             && distance > bottom_distance
                         {
-                    features.push(Point2::new(col_i, row_i));
-                    }
+                            features.push(Point2::new(col_i, row_i));
+                        }
                     }
                 }
             }

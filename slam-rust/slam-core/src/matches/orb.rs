@@ -285,7 +285,7 @@ impl Orb<'_> {
             data,
         }
     }
-    /** 生成特征点描述子描述子*/
+    /** 生成特征点brief描述子*/
     pub fn create_descriptors(&self) -> Vec<BriefDescriptor> {
         let half_patch_size: i32 = 8;
         let half_boundary: i32 = 16;
@@ -300,6 +300,7 @@ impl Orb<'_> {
                 || kp.x >= columns - half_boundary as usize - 4
                 || kp.y >= rows - half_boundary as usize - 4
             {
+                descriptors.push(vec![]);
                 continue;
             }
 
@@ -313,14 +314,22 @@ impl Orb<'_> {
                         .get(((kp.y as i32 + dy) as usize, (kp.x as i32 + dx) as usize))
                         .expect(&format!(" dy , dx {:?} {:?}", dy, dx));
 
-                    m10 = m10 + (dx as f64) * *pixel;
-                    m01 = m01 + (dy as f64) * *pixel;
+                    m10 = m10
+                        + (dx
+                            .to_f64()
+                            .expect(&format!("dx {:?} ,pixel {:?}", dx, pixel)))
+                            * pixel;
+                    m01 = m01
+                        + (dy
+                            .to_f64()
+                            .expect(&format!("dy{:?} ,pixel {:?}", dy, pixel)))
+                            * pixel;
                 }
             }
 
             // let m10float = m10.to_f64().unwrap();
             // let m01float = m01.to_f64().unwrap();
-            let m_sqrt: f64 = ((m10 * m10 + m01 * m01) + 1e-18f64).sqrt();
+            let m_sqrt: f64 = (m10 * m10 + m01 * m01).sqrt() + 1e-18f64;
             let sin_theta = m01 / m_sqrt;
             let cos_theta = m10 / m_sqrt;
 
@@ -337,23 +346,12 @@ impl Orb<'_> {
                         (cos_theta * (p.x) as f64 - sin_theta * (p.y) as f64) + kp.x as f64,
                         (sin_theta * (p.x) as f64 + cos_theta * (p.y) as f64) + kp.y as f64,
                     );
-                    // if pp.x.to_usize() == None || pp.y.to_usize() == None {
-                    //     continue;
-                    // }
+
                     let qq = Point2::new(
                         (cos_theta * (q.x) as f64 - sin_theta * (q.y) as f64) + kp.x as f64,
                         (sin_theta * (q.x) as f64 + cos_theta * (q.y) as f64) + kp.y as f64,
                     );
-                    // if qq.x.to_usize() == None || qq.y.to_usize() == None {
-                    //     continue;
-                    // }
-                    // if qq.x.to_usize().unwrap() >= columns
-                    //     || qq.y.to_usize().unwrap() >= rows
-                    //     || pp.x.to_usize().unwrap() >= columns
-                    //     || pp.y.to_usize().unwrap() >= rows
-                    // {
-                    //     continue;
-                    // }
+
                     if self
                         .data
                         .get((pp.y as usize, pp.x as usize))
@@ -367,7 +365,7 @@ impl Orb<'_> {
                             ))
                     {
                         d = d | (1 << k);
-                    };
+                    }
                 }
                 desc.push(d);
             }
@@ -387,12 +385,18 @@ impl Orb<'_> {
     ) -> Vec<DMatch<u32>> {
         let mut matches = vec![];
         for (i1, f_desc) in first_descriptors.iter().enumerate() {
+            if f_desc.len() == 0 {
+                continue;
+            }
             let mut dmatch = DMatch {
                 i1: i1,
                 i2: 0 as usize,
                 distance: 256 as u32,
             };
             for (i2, s_desc) in second_descripors.iter().enumerate() {
+                if s_desc.len() == 0 {
+                    continue;
+                }
                 let mut distance = 0;
                 for k in 0..8 {
                     distance = distance + hanming_distance((f_desc[k] ^ s_desc[k]) as u32);

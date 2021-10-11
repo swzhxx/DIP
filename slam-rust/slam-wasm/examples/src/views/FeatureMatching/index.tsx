@@ -185,8 +185,7 @@ export default (): JSX.Element => {
           y: features1[index1 * 2 + 1] + padding1Y,
         }
         let point2 = {
-          x:
-            features2[index2 * 2] + padding2X + images[0].width + padding1X * 2,
+          x: features2[index2 * 2] + images[0].width + padding1X * 2,
           y: features2[index2 * 2 + 1] + padding2Y,
         }
         points.push(point1)
