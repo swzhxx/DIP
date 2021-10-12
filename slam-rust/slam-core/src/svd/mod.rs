@@ -1,6 +1,7 @@
 use nalgebra::{
-    allocator::Allocator, ComplexField, DMatrix, DefaultAllocator, Dim, DimDiff, DimMin,
-    DimMinimum, DimSub, SVD, U1,
+    allocator::Allocator, storage::Storage, ComplexField, DMatrix, DefaultAllocator, Dim, DimDiff,
+    DimMin, DimMinimum, DimName, DimSub, Matrix1, Matrix1xX, MatrixSlice1xX, OVector, VecStorage,
+    VectorN, SVD, U1,
 };
 
 pub fn compute_min_vt_eigen_vector(m: &DMatrix<f64>) -> Vec<f64> {
@@ -23,8 +24,31 @@ where
     T: ComplexField,
     R: DimMin<C>,
     C: Dim,
+    DefaultAllocator: Allocator<T, DimMinimum<R, C>, C>
+        + Allocator<T, R, DimMinimum<R, C>>
+        + Allocator<T::RealField, DimMinimum<R, C>>,
 {
-    todo!()
+    let mut s: Vec<(_, _)> = svd
+        .singular_values
+        .iter()
+        .enumerate()
+        .map(|(idx, &v)| (v, idx))
+        .collect();
+    s.sort_by(|a, b| b.0.partial_cmp(&a.0).unwrap());
+    let order: Vec<usize> = s.iter().map(|t| t.1).collect();
+    let single_values: Vec<_> = s.iter().map(|t| t.0).collect();
+
+    let u_clone = svd.u.as_ref().unwrap().clone();
+    let v_t_clone = svd.v_t.as_ref().unwrap().clone();
+    for i in order.iter() {
+        let u_ref = svd.u.as_mut().unwrap();
+        let v_t_ref = svd.v_t.as_mut().unwrap();
+        u_ref.set_column(*i, &u_clone.column(*i));
+        v_t_ref.set_row(*i, &v_t_clone.row(*i));
+        // svd.singular_values.set_row(single_values);
+        let single_value = single_values[*i];
+        svd.singular_values[*i] = single_value;
+    }
 }
 
 #[cfg(test)]
