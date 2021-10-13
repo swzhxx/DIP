@@ -4,7 +4,7 @@ use crate::{
     point::{Point2, Point3},
 };
 use nalgebra::{Const, Dim, Dynamic, Matrix3, Matrix3xX};
-use ndarray::{Array1, Array2, Axis};
+use ndarray::{array, Array1, Array2, Axis};
 use nshare::{RefNdarray2, ToNalgebra};
 use num_traits::{AsPrimitive, Float, Num};
 
@@ -60,19 +60,13 @@ impl<'a> EightPoint<'_> {
                 .unwrap();
             }
 
-            // let svd = w.view().into_nalgebra().svd(false, true);
-            // let v_t = svd.v_t.unwrap();
-            // let f = v_t.column(8);
             let f = compute_min_vt_eigen_vector(&w.view().into_nalgebra().clone_owned());
-            let f = Matrix3::from_vec(f);
-            // let f: Matrix3xX<f64> = f
-            //     .clone_owned()
-            //     .reshape_generic(Const::<3>, Dynamic::from_usize(3));
-            println!("f {:?}", f);
+            println!("f vec{:?}", f);
+            let f = Array2::from_shape_vec((3, 3), f).unwrap();
+            let f = f.into_nalgebra();
+
             let mut f_svd = f.svd(true, true);
-            println!("f_svd {:?} ", f_svd);
             sort_svd(&mut f_svd);
-            println!("f_svd sort_after {:?} ", f_svd);
             f_svd.singular_values[2] = 0.;
             let f_bar = f_svd.recompose().unwrap();
             let f_bar = f_bar.ref_ndarray2().to_owned();

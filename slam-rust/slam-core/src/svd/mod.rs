@@ -3,6 +3,7 @@ use nalgebra::{
     DimMin, DimMinimum, DimName, DimSub, Matrix1, Matrix1xX, MatrixSlice1xX, OVector, VecStorage,
     VectorN, SVD, U1,
 };
+use nshare::RefNdarray2;
 
 pub fn compute_min_vt_eigen_vector(m: &DMatrix<f64>) -> Vec<f64> {
     let v = m.transpose() * m;
@@ -14,8 +15,8 @@ pub fn compute_min_vt_eigen_vector(m: &DMatrix<f64>) -> Vec<f64> {
         .min_by_key(|&(_, &v)| float_ord::FloatOrd(v))
         .unwrap();
     let u = svd.u.unwrap();
-    let column = u.column(ix);
-    let min_eigen_vector: Vec<f64> = column.into_iter().map(|v| *v).collect();
+    let column = u.column(ix).to_owned();
+    let min_eigen_vector: Vec<f64> = column.ref_ndarray2().to_owned().into_raw_vec();
     min_eigen_vector
 }
 
