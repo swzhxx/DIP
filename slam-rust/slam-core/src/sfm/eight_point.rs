@@ -219,8 +219,8 @@ mod test {
         let points2: Vec<Point2<f64>> = points2.into_iter().map(create_point).collect();
 
         let mut ep = EightPoint::new(&points1, &points2);
-        // let fundamental = ep.normalize_find_fundamental();
-        // println!("normalize fundamental matrix {:?}", fundamental);
+        let fundamental = ep.normalize_find_fundamental();
+        println!("normalize fundamental matrix {:?}", fundamental);
         let fundamental = ep.find_fundamental();
         println!("fundamental matrix {:?}", fundamental);
     }

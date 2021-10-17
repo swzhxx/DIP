@@ -8,24 +8,30 @@ use nshare::{ToNalgebra, ToNdarray2};
 use crate::{
     optimize::LM,
     point::{Point, Point2, Point3},
+    svd::compute_min_vt_eigen_vector,
 };
 
 /// 通过Fundamental矩阵计算旋转和平移矩阵
 /// 获得一个旋转矩阵，和一个平移向量的反对称矩阵
-pub fn find_pose(fundamental: Array2<f64>) -> (Array2<f64>, Array2<f64>) {
-    let f = fundamental.view().into_nalgebra();
-    let svd = f.svd(false, true);
-    // let v_t = svd.v_t.unwrap();
-    let b = svd.v_t.unwrap();
-    let b = b.column(8).into_ndarray2().to_owned();
-    let a = -&b.dot(&fundamental);
+pub fn find_pose(fundamental: &Array2<f64>) -> (Array2<f64>, Array2<f64>) {
+    let f = fundamental.clone().to_owned().into_nalgebra();
+    // let svd = f.svd(false, true);
+    // // let v_t = svd.v_t.unwrap();
+    // let b = svd.v_t.unwrap();
+    let less_eigen_vector = compute_min_vt_eigen_vector(&f);
+    let b = array![
+        [0., -less_eigen_vector[2], less_eigen_vector[1]],
+        [less_eigen_vector[2], 0., -less_eigen_vector[0]],
+        [-less_eigen_vector[1], less_eigen_vector[0], 0.]
+    ];
+    let a = -&b.dot(fundamental);
     (a, b)
 }
 
 type MatchPoints<T> = Vec<Point2<T>>;
 
 pub fn restoration_perspective_structure<T>(
-    fundamental: Array2<f64>,
+    fundamental: &Array2<f64>,
     match1: &MatchPoints<T>,
     match2: &MatchPoints<T>,
     iter: Option<usize>,
@@ -86,4 +92,34 @@ where
     }
 
     t.into_shape((4, 3)).unwrap()
+}
+
+#[cfg(test)]
+mod test {
+    use ndarray::{array, Array2};
+
+    use crate::sfm::{find_pose, restoration_perspective_structure};
+    #[test]
+    fn test_find_pose() {
+        let shape = [3, 3];
+        let fundamental = array![
+            [
+                0.00000030289221999405154,
+                0.000005869970528177112,
+                0.011360760530248645,
+            ],
+            [
+                0.000008181615238416967,
+                -0.0000015521808080155693,
+                0.0015044011091202663,
+            ],
+            [
+                -0.014145388104204511,
+                0.003523120361907385,
+                -0.9998280679192365,
+            ],
+        ];
+
+        println!("pose {:?} ", find_pose(&fundamental));
+    }
 }

@@ -1,11 +1,13 @@
 pub mod features;
+pub mod filter;
 pub mod matches;
 pub mod optimize;
 pub mod point;
 pub mod sfm;
 pub mod single;
-pub mod triangulate;
 mod svd;
+pub mod triangulate;
+mod utils;
 #[cfg(test)]
 mod tests {
     #[test]
