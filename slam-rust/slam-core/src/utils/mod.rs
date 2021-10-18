@@ -1,3 +1,4 @@
+use nalgebra::{vector, Vector2, Vector3};
 use ndarray::{array, s, Array, Array1, Array2};
 
 use crate::point::{Point, Point2, Point3};
@@ -5,7 +6,7 @@ use crate::point::{Point, Point2, Point3};
 /// @param p 为像素坐标 ，
 ///
 /// @param camera_inner_args 为摄像机内参数
-pub fn px2cam<T>(p: Point2<T>, camera_inner_args: Array2<f64>) -> Point3<f64>
+pub fn px2cam<T>(p: &Vector2<f64>, camera_inner_args: &Array2<f64>) -> Vector3<f64>
 where
     T: Point,
 {
@@ -14,14 +15,10 @@ where
     let fx = camera_inner_args[[0, 0]];
     let fy = camera_inner_args[[1, 1]];
 
-    return Point3::new(
-        (p.x.to_f64().unwrap() - cx) / fx,
-        (p.y.to_f64().unwrap() - cy) / fy,
-        1.,
-    );
+    vector![(p[0] - cx) / fx, (p[1] - cy) / fy, 1.]
 }
 
-pub fn cam2px<T>(p: Point3<T>, camera_inner_args: Array2<f64>) -> Point2<f64>
+pub fn cam2px<T>(p: &Vector3<f64>, camera_inner_args: &Array2<f64>) -> Vector2<f64>
 where
     T: Point,
 {
@@ -29,10 +26,7 @@ where
     let cy = camera_inner_args[[1, 2]];
     let fx = camera_inner_args[[0, 0]];
     let fy = camera_inner_args[[1, 1]];
-    return Point2::new(
-        p.x.to_f64().unwrap() * fx / p.z.to_f64().unwrap() + cx,
-        p.y.to_f64().unwrap() * fy / p.x.to_f64().unwrap() + cy,
-    );
+    vector![(p[0] * fx + cx) / p[2], (p[1] * fy + cy) / p[2]]
 }
 
 pub fn inside() -> bool {
@@ -61,7 +55,7 @@ pub fn ncc(
         Some(val) => val,
         _ => 3,
     };
-    let ncc_area = (2 * ncc_window_size + 1).pow(2);
+    // let ncc_area = (2 * ncc_window_size + 1).pow(2);
     let ncc_window_size = ncc_window_size;
     let ref_block = image1.slice(s![
         pt_ref.0 - ncc_window_size..pt_ref.0 + ncc_window_size,
