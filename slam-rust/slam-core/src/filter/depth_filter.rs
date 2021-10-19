@@ -88,7 +88,10 @@ impl DepthFilter {
                 let pt_ref = array![x as f64, y as f64];
                 let depth = self.depth_matrix[[y, x]];
                 let depth_cov = self.depth_cov2_matrix[[y, x]];
-                self.epipolar_search(&pt_ref, pose, depth, depth_cov);
+                if let Some(pt_curr) = self.epipolar_search(&pt_ref, pose, depth, depth_cov) {
+                    // TODO: 更新深度图
+                    self.update_depth_filter();
+                }
             }
         }
     }
@@ -151,6 +154,11 @@ impl DepthFilter {
         } else {
             Some(best_px_curr)
         }
+    }
+
+    /// 深度图更新
+    fn update_depth_filter(&self) {
+        todo!()
     }
 }
 
