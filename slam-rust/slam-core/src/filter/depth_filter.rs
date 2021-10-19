@@ -1,7 +1,8 @@
-use nalgebra::vector;
+use nalgebra::{vector, Const, Dynamic, Vector2};
 use ndarray::{array, Array, Array1, Array2};
+use nshare::ToNalgebra;
 
-use crate::utils::px2cam;
+use crate::utils::{cam2px, ncc, px2cam};
 const border: usize = 20;
 struct DepthFilter {
     height: usize,
@@ -80,7 +81,7 @@ impl DepthFilter {
         for y in border..(self.height - border) {
             for x in border..(self.width - border) {
                 if self.depth_cov2_matrix[[y, x]] < self.min_depth
-                    || self.depth_cov2_matrix > self.max_depth
+                    || self.depth_cov2_matrix[[y, x]] > self.max_depth
                 {
                     continue;
                 }
@@ -100,14 +101,65 @@ impl DepthFilter {
         pose: &Array2<f64>,
         depth: f64,
         depth_cov: f64,
-    ) -> (Array1<f64>, Array1<f64>) {
+    ) -> Option<Vector2<f64>> {
         let camera = array![[1., 0., 1.], [0., 1., 1.], [0., 0., 1.]];
+        let pose = pose
+            .clone()
+            .into_nalgebra()
+            .reshape_generic(Const::<3>, Dynamic { value: 3 });
         let pt_world = px2cam(&vector![pt_ref[1], pt_ref[0]], &camera);
         let pt_world = vector![pt_world.x, pt_world.y, pt_world.z];
         let pt_world = pt_world.normalize() * depth;
 
-        todo!()
+        let px_mean_curr = cam2px(&(pose * &pt_world), &camera);
+        let mut d_min = depth - 3. * depth_cov;
+        let d_max = depth + 3. * depth_cov;
+        if d_min < 0.1 {
+            d_min = 0.1
+        }
+        let px_min_curr = cam2px(&(pt_world * d_min), &camera);
+        let px_max_curr = cam2px(&(pt_world * d_max), &camera);
+        let epipolar_line = px_max_curr - px_min_curr;
+        let epipolar_direction = epipolar_line.normalize();
+        let mut half_length = 0.5 * epipolar_line.norm();
+        if half_length > 100. {
+            half_length = 100.;
+        }
+        let best_ncc = -1.;
+        let mut best_px_curr;
+        let l = -half_length;
+        while l <= half_length {
+            let px_curr = px_mean_curr + l * epipolar_direction;
+            if !inside(&px_curr, self.width, self.height) {
+                continue;
+            }
+            let ncc_value = ncc(
+                &self.ref_image.unwrap(),
+                &self.current_image.unwrap(),
+                (pt_ref[0], pt_ref[1]),
+                (px_curr.x, px_curr.y),
+                Some(3),
+            );
+            if ncc_value > best_ncc {
+                best_ncc = ncc_value;
+                best_px_curr = px_curr;
+            }
+            l = l + 0.7;
+        }
+        if best_ncc < 0.85 {
+            None
+        } else {
+            Some(best_px_curr)
+        }
     }
 }
 
 pub type ReaderResult = (Option<Array2<f64>>, Option<Array2<f64>>);
+
+fn inside(pt: &Vector2<f64>, width: usize, height: usize) -> bool {
+    let boarder: f64 = 20.;
+    return pt[(0, 0)] >= boarder
+        && pt[(1, 0)] >= boarder
+        && pt[(0, 0)] + boarder < width as f64
+        && pt[(1, 0)] + boarder <= height as f64;
+}
