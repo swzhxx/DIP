@@ -1,9 +1,13 @@
-use nalgebra::{vector, Const, Dynamic, Vector2};
-use ndarray::{array, Array, Array1, Array2};
+use nalgebra::{
+    matrix, vector, AbstractRotation, Const, DMatrix, Dynamic, Matrix2, Matrix3, MatrixXx3, Vector2,
+};
+use ndarray::{array, s, Array, Array1, Array2, ArrayBase, OwnedRepr};
 use nshare::ToNalgebra;
 
 use crate::utils::{cam2px, ncc, px2cam};
 const border: usize = 20;
+const camera: ArrayBase<OwnedRepr<f64>, ndarray::Dim<[usize; 2]>> =
+    array![[1., 0., 1.], [0., 1., 1.], [0., 0., 1.]];
 struct DepthFilter {
     height: usize,
     width: usize,
@@ -88,9 +92,16 @@ impl DepthFilter {
                 let pt_ref = array![x as f64, y as f64];
                 let depth = self.depth_matrix[[y, x]];
                 let depth_cov = self.depth_cov2_matrix[[y, x]];
-                if let Some(pt_curr) = self.epipolar_search(&pt_ref, pose, depth, depth_cov) {
+                if let Some((pt_curr, epiploar_direction)) =
+                    self.epipolar_search(&pt_ref, pose, depth, depth_cov)
+                {
                     // TODO: 更新深度图
-                    self.update_depth_filter();
+                    self.update_depth_filter(
+                        &vector![x as f64, y as f64],
+                        &pt_curr,
+                        &pose,
+                        &epiploar_direction,
+                    );
                 }
             }
         }
@@ -104,8 +115,7 @@ impl DepthFilter {
         pose: &Array2<f64>,
         depth: f64,
         depth_cov: f64,
-    ) -> Option<Vector2<f64>> {
-        let camera = array![[1., 0., 1.], [0., 1., 1.], [0., 0., 1.]];
+    ) -> Option<(Vector2<f64>, Vector2<f64>)> {
         let pose = pose
             .clone()
             .into_nalgebra()
@@ -152,12 +162,47 @@ impl DepthFilter {
         if best_ncc < 0.85 {
             None
         } else {
-            Some(best_px_curr)
+            Some((best_px_curr, epipolar_direction))
         }
     }
 
     /// 深度图更新
-    fn update_depth_filter(&self) {
+    /// 通过三角化， 进行深度图更新
+    fn update_depth_filter(
+        &mut self,
+        pt_ref: &Vector2<f64>,
+        pt_curr: &Vector2<f64>,
+        pose: &Array2<f64>,
+        epipolar_direction: &Vector2<f64>,
+    ) {
+        // let pose = pose.view().into_nalgebra();
+        let f_ref = px2cam(pt_ref, &camera);
+        let f_ref = f_ref.normalize();
+        let f_curr = px2cam(pt_curr, &camera);
+        let f_curr = f_curr.normalize();
+
+        let R = pose.slice(s![0..3, 0..3]).to_owned();
+        let R: DMatrix<f64> = R.into_nalgebra().try_inverse().unwrap();
+        let t = vector![pose[[3, 0]], pose[[3, 1]], pose[[3, 2]]];
+
+        let f2 = R * f_curr;
+        let b = vector![(f_ref.transpose() * t).sum(), (f2.transpose() * t).sum()];
+        let A: Matrix2<f64> = Matrix2::new(
+            (f_ref.transpose() * f_ref).sum(),
+            (-f_ref.transpose() * f2).sum(),
+            (f2.transpose() * f_ref).sum(),
+            (-f2.transpose() * f2).sum(),
+        );
+        let ans = A.try_inverse().unwrap() * b;
+
+        let xm = ans[0] * f_ref;
+        let xn = ans[1] * f2 + t;
+        let p_esti = (xm + xn) / 2.;
+        let dept_estimation = p_esti.norm();
+
+        // 计算不确定性
+        let p = f_ref * dept_estimation;
+        let a = p - (t);
         todo!()
     }
 }
