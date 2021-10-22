@@ -1,3 +1,5 @@
+use std::f64::consts::PI;
+
 use nalgebra::{
     matrix, vector, AbstractRotation, Const, DMatrix, Dynamic, Matrix2, Matrix3, MatrixXx3, Vector2,
 };
@@ -203,7 +205,33 @@ impl DepthFilter {
         // 计算不确定性
         let p = f_ref * dept_estimation;
         let a = p - (t);
-        todo!()
+        let t_norm = t.norm();
+        let a_norm = a.norm();
+        let alpha = (f_ref.dot(&t) / t_norm).acos();
+        let beta = (-a.dot(&t) / (a_norm * t_norm)).acos();
+        let f_curr_prim = px2cam(&(pt_curr + epipolar_direction), &camera);
+        let f_curr_prim = f_curr_prim.normalize();
+        let beta_prim = f_curr_prim.dot(&-t) / t_norm;
+        let gamma = PI - alpha - beta_prim;
+        let p_prim = t_norm * beta_prim.sin() / gamma.sin();
+        let d_cov = p_prim - dept_estimation;
+        let d_cov2 = d_cov * d_cov;
+
+        //高斯融合
+        let mu = self
+            .depth_matrix
+            .get((pt_ref.y as usize, pt_ref.x as usize))
+            .unwrap();
+        let sigma2 = self
+            .depth_cov2_matrix
+            .get((pt_ref.y as usize, pt_ref.x as usize))
+            .unwrap();
+
+        let mu_fuse = d_cov2 * mu + sigma2 * dept_estimation;
+        let sigma_fuse2 = (sigma2 * d_cov2) / (sigma2 + d_cov2);
+
+        self.depth_matrix[(pt_ref.y as usize, pt_ref.x as usize)] = mu_fuse;
+        self.depth_cov2_matrix[(pt_ref.y as usize, pt_ref.x as usize)] = sigma_fuse2;
     }
 }
 
