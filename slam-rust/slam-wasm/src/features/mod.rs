@@ -7,7 +7,6 @@ use slam_core::point::Point2;
 use wasm_bindgen::prelude::*;
 use web_sys::ImageData;
 
-
 #[wasm_bindgen]
 
 /// ORB 特征匹配，使用Brief算法
@@ -86,10 +85,10 @@ impl OrbFeatureMatcher {
         });
 
         let descriptors_1 = Orb::new(&gray_image_data_1, &features_1).create_descriptors();
-        web_sys::console::log_1(&format!(" descriptors_1 {:?}", descriptors_1).into());
+        // web_sys::console::log_1(&format!(" descriptors_1 {:?}", descriptors_1).into());
 
         let descriptors_2 = Orb::new(&gray_image_data_2, &features_2).create_descriptors();
-        web_sys::console::log_1(&format!(" descriptors_2 {:?}", descriptors_2).into());
+        // web_sys::console::log_1(&format!(" descriptors_2 {:?}", descriptors_2).into());
 
         let matched = Orb::brief_match(&descriptors_1, &descriptors_2, threshold);
 

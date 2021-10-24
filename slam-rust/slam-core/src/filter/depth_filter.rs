@@ -9,20 +9,20 @@ use nshare::ToNalgebra;
 use crate::utils::{cam2px, ncc, px2cam};
 const border: usize = 20;
 
-pub struct DepthFilter {
+pub struct DepthFilter<'a> {
     height: usize,
     width: usize,
     pub depth_matrix: Array2<f64>,
     depth_cov2_matrix: Array2<f64>,
     min_depth: f64,
     max_depth: f64,
-    reader: Box<dyn Fn() -> ReaderResult>,
-    ref_image: Option<Array2<f64>>,
-    current_image: Option<Array2<f64>>, // images: Vec<Array2<f64>>,
+    reader: Box<dyn Fn(&'a Self) -> ReaderResult<'a>>,
+    ref_image: Option<&'a Array2<f64>>,
+    current_image: Option<&'a Array2<f64>>, // images: Vec<Array2<f64>>,
     camera: Array2<f64>,
 }
 
-impl DepthFilter {
+impl<'a> DepthFilter<'a> {
     pub fn new(
         height: usize,
         width: usize,
@@ -30,7 +30,7 @@ impl DepthFilter {
         depth_cov: Option<f64>,
         min_depth: Option<f64>,
         max_depth: Option<f64>,
-        reader: Box<dyn Fn() -> ReaderResult>,
+        reader: Box<dyn Fn(&'a Self) -> ReaderResult<'a>>,
     ) -> Self {
         let depth_mean = match depth_mean {
             Some(val) => val,
@@ -62,9 +62,9 @@ impl DepthFilter {
         }
     }
 
-    fn reader(&self) -> ReaderResult {
+    fn reader(&self) -> ReaderResult<'a> {
         let reader = &self.reader;
-        reader()
+        reader(self)
     }
 
     pub fn excute(&mut self) {
@@ -73,7 +73,7 @@ impl DepthFilter {
             None => return,
             _ => {}
         }
-        match &self.ref_image {
+        match self.ref_image {
             Some(_ref_image) => self.current_image = option_image,
             None => self.ref_image = option_image,
         };
@@ -242,7 +242,7 @@ impl DepthFilter {
 }
 
 /// 0：图像数据 ， 1.pose矩阵
-pub type ReaderResult = (Option<Array2<f64>>, Option<Array2<f64>>);
+pub type ReaderResult<'b> = (Option<&'b Array2<f64>>, Option<Array2<f64>>);
 
 fn inside(pt: &Vector2<f64>, width: usize, height: usize) -> bool {
     let boarder: f64 = 20.;
