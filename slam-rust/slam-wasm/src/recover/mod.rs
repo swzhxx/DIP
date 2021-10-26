@@ -5,7 +5,7 @@ use slam_core::{
     features::fast::OFast,
     filter::depth_filter::{DepthFilter, ReaderResult},
     matches::orb::Orb,
-    point::{Point2, Point3},
+    point::{self, Point2, Point3},
     sfm::{find_pose, restoration_perspective_structure, EightPoint},
     triangulate::{self, Triangulate},
 };
@@ -118,9 +118,28 @@ impl Recover3D {
         }
     }
 
-    pub fn recover(&mut self) -> Vec<f64> {
-        let mut images = vec![];
-        std::mem::swap(&mut self.images, &mut images);
+    pub fn recover_3d_point(&mut self) -> Vec<f64> {
+        let depths = self.compute_depth();
+        let ref_image = &self.images[0];
+        // ref_image.zip_mut_with(&depth, || {});
+        let mut point_cloud = vec![];
+        let shape = ref_image.shape();
+        for y in 0..shape[0] {
+            for x in 0..shape[1] {
+                let depth = depths[[y, x]];
+                let color = ref_image[[y, x]];
+                point_cloud.push(x as f64 * depth);
+                point_cloud.push(y as f64 * depth);
+                point_cloud.push(depth);
+                point_cloud.push(color);
+            }
+        }
+        point_cloud
+    }
+}
+
+impl Recover3D {
+    pub fn compute_depth(&mut self) -> Array2<f64> {
         let ref_image = &self.images[0];
         let shape = ref_image.shape();
 
@@ -171,11 +190,6 @@ impl Recover3D {
             reader,
         );
         depth_filter.excute();
-        depth_filter
-            .depth_matrix
-            .clone()
-            .to_shape(ref_image.len())
-            .unwrap()
-            .to_vec()
+        depth_filter.depth_matrix.clone()
     }
 }
