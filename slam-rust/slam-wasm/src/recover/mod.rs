@@ -121,48 +121,55 @@ impl Recover3D {
     pub fn recover(&mut self) {
         let mut images = vec![];
         std::mem::swap(&mut self.images, &mut images);
-
-        let rc_images = Rc::new(images);
-        let ref_image = &rc_images[0];
+        let ref_image = &self.images[0];
         let shape = ref_image.shape();
-        let rc_images_clone = Rc::clone(&rc_images);
+
         let i = RefCell::new(1);
         // let i_borrow_mut = i.borrow_mut();
 
         let ref_features = OFast::new(ref_image).find_features(None);
         let ref_descriptors = Orb::new(ref_image, &ref_features).create_descriptors();
 
-        let reader: Box<dyn for<'a> Fn(&'a dp) -> ReaderResult<'a>> = Box::new(move || {
-            if rc_images_clone.len() == 0 || rc_images_clone.len() == 1 {
-                return (None, None);
-            }
-            let curr_image = &rc_images_clone[*i.borrow()];
-            let curr_features = OFast::new(curr_image).find_features(None);
-            let curr_descriptors = Orb::new(curr_image, &curr_features).create_descriptors();
-            let mut matches = Orb::brief_match(&ref_descriptors, &curr_descriptors, 40);
-            let matches1 = matches
-                .iter()
-                .map(|dmatch| ref_features[dmatch.i1].clone().f())
-                .collect();
-            let matches2 = matches
-                .iter()
-                .map(|dmatch| curr_features[dmatch.i2].clone().f())
-                .collect();
-            let fundamental = EightPoint::new(&matches1, &matches2).normalize_find_fundamental();
-            if fundamental == None {
+        let reader: Box<dyn for<'a> Fn(&'a Vec<Array2<f64>>) -> ReaderResult<'a>> =
+            Box::new(move |images| {
+                let ref_image = &images[0];
+                let curr_image = &images[*i.borrow()];
+                let curr_features = OFast::new(curr_image).find_features(None);
+                let curr_descriptors = Orb::new(curr_image, &curr_features).create_descriptors();
+                let mut matches = Orb::brief_match(&ref_descriptors, &curr_descriptors, 40);
+                let matches1 = matches
+                    .iter()
+                    .map(|dmatch| ref_features[dmatch.i1].clone().f())
+                    .collect();
+                let matches2 = matches
+                    .iter()
+                    .map(|dmatch| curr_features[dmatch.i2].clone().f())
+                    .collect();
+                let fundamental =
+                    EightPoint::new(&matches1, &matches2).normalize_find_fundamental();
+                if fundamental == None {
+                    *i.borrow_mut() = *i.borrow() + 1;
+                    return (None, None, None);
+                }
+                let pose = restoration_perspective_structure(
+                    &fundamental.unwrap(),
+                    &matches1,
+                    &matches2,
+                    None,
+                );
                 *i.borrow_mut() = *i.borrow() + 1;
-                return (None, None);
-            }
-            let pose = restoration_perspective_structure(
-                &fundamental.unwrap(),
-                &matches1,
-                &matches2,
-                None,
-            );
-            *i.borrow_mut() = *i.borrow() + 1;
-            return (Some(curr_image), Some(pose));
-        });
-        let mut depth_filter = DepthFilter::new(shape[0], shape[1], None, None, None, None, reader);
+                return (Some(ref_image), Some(curr_image), Some(pose));
+            });
+        let mut depth_filter = DepthFilter::new(
+            &self.images,
+            shape[0],
+            shape[1],
+            None,
+            None,
+            None,
+            None,
+            reader,
+        );
         depth_filter.excute();
 
         // 还原3维坐

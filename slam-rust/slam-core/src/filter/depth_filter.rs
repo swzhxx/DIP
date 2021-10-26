@@ -1,4 +1,4 @@
-use std::f64::consts::PI;
+use std::{f64::consts::PI, marker::PhantomData, thread::current};
 
 use nalgebra::{
     matrix, vector, AbstractRotation, Const, DMatrix, Dynamic, Matrix2, Matrix3, MatrixXx3, Vector2,
@@ -10,27 +10,29 @@ use crate::utils::{cam2px, ncc, px2cam};
 const border: usize = 20;
 
 pub struct DepthFilter<'a> {
+    images: &'a Vec<Array2<f64>>,
     height: usize,
     width: usize,
     pub depth_matrix: Array2<f64>,
     depth_cov2_matrix: Array2<f64>,
     min_depth: f64,
     max_depth: f64,
-    reader: Box<dyn Fn(&'a Self) -> ReaderResult<'a>>,
-    ref_image: Option<&'a Array2<f64>>,
-    current_image: Option<&'a Array2<f64>>, // images: Vec<Array2<f64>>,
+    reader: Box<dyn Fn(&'a Vec<Array2<f64>>) -> ReaderResult<'a>>,
+    // ref_image: Option<&'a Array2<f64>>,
+    // current_image: Option<&'a Array2<f64>>, // images: Vec<Array2<f64>>,
     camera: Array2<f64>,
 }
 
 impl<'a> DepthFilter<'a> {
     pub fn new(
+        images: &'a Vec<Array2<f64>>,
         height: usize,
         width: usize,
         depth_mean: Option<f64>,
         depth_cov: Option<f64>,
         min_depth: Option<f64>,
         max_depth: Option<f64>,
-        reader: Box<dyn Fn(&'a Self) -> ReaderResult<'a>>,
+        reader: Box<dyn Fn(&'a Vec<Array2<f64>>) -> ReaderResult<'a>>,
     ) -> Self {
         let depth_mean = match depth_mean {
             Some(val) => val,
@@ -49,6 +51,7 @@ impl<'a> DepthFilter<'a> {
             _ => 10.,
         };
         DepthFilter {
+            images,
             height,
             width,
             depth_matrix: Array::from_elem((height, width), depth_mean),
@@ -56,29 +59,26 @@ impl<'a> DepthFilter<'a> {
             min_depth,
             max_depth,
             reader, // images,
-            ref_image: None,
-            current_image: None,
+            // ref_image: None,
+            // current_image: None,
             camera: array![[1., 0., 1.], [0., 1., 1.], [0., 0., 1.]],
         }
     }
 
     fn reader(&self) -> ReaderResult<'a> {
         let reader = &self.reader;
-        reader(self)
+        reader(&self.images)
     }
 
     pub fn excute(&mut self) {
-        let (option_image, option_pose) = self.reader();
-        match option_image {
-            None => return,
-            _ => {}
-        }
-        match self.ref_image {
-            Some(_ref_image) => self.current_image = option_image,
-            None => self.ref_image = option_image,
-        };
-        if self.ref_image != None && self.current_image != None && option_pose != None {
-            self.update(&option_pose.unwrap());
+        let (ref_image, option_image, option_pose) = self.reader();
+
+        if ref_image != None && option_image != None && option_pose != None {
+            self.update(
+                ref_image.unwrap(),
+                option_image.unwrap(),
+                &option_pose.unwrap(),
+            );
             self.excute();
         }
     }
@@ -86,8 +86,8 @@ impl<'a> DepthFilter<'a> {
     /// 对整个深度图更新
     pub fn update(
         &mut self,
-        // ref_image: &Array2<f64>,
-        // current_image: &Array2<f64>,
+        ref_image: &Array2<f64>,
+        current_image: &Array2<f64>,
         pose: &Array2<f64>,
     ) {
         for y in border..(self.height - border) {
@@ -101,7 +101,7 @@ impl<'a> DepthFilter<'a> {
                 let depth = self.depth_matrix[[y, x]];
                 let depth_cov = self.depth_cov2_matrix[[y, x]];
                 if let Some((pt_curr, epiploar_direction)) =
-                    self.epipolar_search(&pt_ref, pose, depth, depth_cov)
+                    self.epipolar_search(&pt_ref, ref_image, current_image, pose, depth, depth_cov)
                 {
                     // TODO: 更新深度图
                     self.update_depth_filter(
@@ -120,6 +120,8 @@ impl<'a> DepthFilter<'a> {
     fn epipolar_search(
         &self,
         pt_ref: &Array1<f64>,
+        ref_image: &Array2<f64>,
+        current_image: &Array2<f64>,
         pose: &Array2<f64>,
         depth: f64,
         depth_cov: f64,
@@ -155,8 +157,8 @@ impl<'a> DepthFilter<'a> {
                 continue;
             }
             let ncc_value = ncc(
-                self.ref_image.as_ref().unwrap(),
-                self.current_image.as_ref().unwrap(),
+                ref_image,
+                current_image,
                 (pt_ref[0], pt_ref[1]),
                 (px_curr.x, px_curr.y),
                 Some(3),
@@ -241,8 +243,12 @@ impl<'a> DepthFilter<'a> {
     }
 }
 
-/// 0：图像数据 ， 1.pose矩阵
-pub type ReaderResult<'b> = (Option<&'b Array2<f64>>, Option<Array2<f64>>);
+/// 0：ref图像数据 1.curr图像数据 ， 2.pose矩阵
+pub type ReaderResult<'b> = (
+    Option<&'b Array2<f64>>,
+    Option<&'b Array2<f64>>,
+    Option<Array2<f64>>,
+);
 
 fn inside(pt: &Vector2<f64>, width: usize, height: usize) -> bool {
     let boarder: f64 = 20.;
