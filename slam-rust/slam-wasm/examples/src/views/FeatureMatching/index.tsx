@@ -1,5 +1,10 @@
 import React, { ChangeEvent, useEffect, useState, useRef } from 'react'
 import { Slam } from '@/slam'
+import {
+  imageElementToImageData,
+  fileToImageData,
+  initImageElement,
+} from '@/utils/image'
 import House1 from '@/assets/image/1.png'
 import House2 from '@/assets/image/2.png'
 
@@ -11,49 +16,6 @@ type CanvasRect = {
 type Point = {
   x: number
   y: number
-}
-
-const fileToImageELement = (file: File): Promise<HTMLImageElement> => {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader()
-    reader.onload = () => {
-      const image = new Image()
-      image.onload = () => {
-        resolve(image)
-      }
-      image.src = reader.result as string
-    }
-    reader.readAsDataURL(file)
-  })
-}
-
-const imageElementToImageData = (imageElement: HTMLImageElement) => {
-  const canvas = document.createElement('canvas')
-  canvas.width = imageElement.width
-  canvas.height = imageElement.height
-  const context = canvas.getContext('2d')
-  if (!context) return
-  context.drawImage(imageElement, 0, 0, imageElement.width, imageElement.height)
-  return context.getImageData(0, 0, imageElement.width, imageElement.height)
-}
-
-const fileToImageData = async (f: File): Promise<ImageData> => {
-  let imageElement = await fileToImageELement(f)
-  let imageData = imageElementToImageData(imageElement)
-  if (!imageData) {
-    throw new Error('get imageData failed')
-  }
-  return imageData
-}
-
-const initImageElement = async (src: string): Promise<HTMLImageElement> => {
-  return new Promise((resolve, reject) => {
-    let image = new Image()
-    image.onload = () => {
-      resolve(image)
-    }
-    image.src = src
-  })
 }
 
 export default (): JSX.Element => {

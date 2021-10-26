@@ -1,4 +1,4 @@
-use std::{borrow::Borrow, cell::RefCell, rc::Rc};
+use std::{borrow::Borrow, cell::RefCell, clone, rc::Rc};
 
 use ndarray::{array, Array2, Axis};
 use slam_core::{
@@ -118,7 +118,7 @@ impl Recover3D {
         }
     }
 
-    pub fn recover(&mut self) {
+    pub fn recover(&mut self) -> Vec<f64> {
         let mut images = vec![];
         std::mem::swap(&mut self.images, &mut images);
         let ref_image = &self.images[0];
@@ -171,8 +171,11 @@ impl Recover3D {
             reader,
         );
         depth_filter.excute();
-
-        // 还原3维坐
-        todo!()
+        depth_filter
+            .depth_matrix
+            .clone()
+            .to_shape(ref_image.len())
+            .unwrap()
+            .to_vec()
     }
 }
