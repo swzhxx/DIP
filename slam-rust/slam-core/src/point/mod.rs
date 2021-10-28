@@ -1,4 +1,4 @@
-use std::{convert::TryFrom, ops::Deref};
+use std::{convert::TryFrom, fmt::Debug, ops::Deref};
 
 use ndarray::{Array1, Ix1};
 use num_traits::{AsPrimitive, Num, ToPrimitive};
@@ -6,7 +6,7 @@ use num_traits::{AsPrimitive, Num, ToPrimitive};
 // pub type Point2<T> = ArrayBase<T, [usize; 2]>;
 // pub type Point3<T> = ArrayBase<T, [usize; 3]>;
 
-pub trait Point: PartialEq + PartialOrd + Copy + Clone + Num + ToPrimitive {}
+pub trait Point: PartialEq + PartialOrd + Copy + Clone + Num + ToPrimitive + Debug{}
 impl Point for usize {}
 impl Point for f64 {}
 impl Point for u32 {}
@@ -24,7 +24,7 @@ where
 
 impl<T> Point2<T>
 where
-    T: Point,
+    T: Point + Debug,
 {
     pub fn new(x: T, y: T) -> Point2<T> {
         let array = Array1::from_vec(vec![x, y]);
@@ -36,13 +36,20 @@ where
     }
 
     pub fn f(&self) -> Point2<f64> {
-        Point2::new(self.x.to_f64().unwrap(), self.y.to_f64().unwrap())
+        Point2::new(
+            self.x
+                .to_f64()
+                .expect(&format!("x to_f64 failed {:?}", self.x)),
+            self.y
+                .to_f64()
+                .expect(&format!("y to_f64 failed {:?}", self.y)),
+        )
     }
 }
 
 impl<T> Deref for Point2<T>
 where
-    T: Point,
+    T: Point + Debug,
 {
     type Target = Array1<T>;
     fn deref(&self) -> &Self::Target {
@@ -52,7 +59,7 @@ where
 
 impl<T> PartialEq for Point2<T>
 where
-    T: Point,
+    T: Point + Debug,
 {
     fn eq(&self, other: &Self) -> bool {
         self.x == other.x && self.y == other.y
@@ -61,7 +68,7 @@ where
 
 impl<T> From<Point3<T>> for Point2<T>
 where
-    T: Point,
+    T: Point + Debug,
 {
     fn from(item: Point3<T>) -> Point2<T> {
         Point2::new(item.x, item.y)
@@ -70,7 +77,7 @@ where
 
 impl<T> TryFrom<Array1<T>> for Point2<T>
 where
-    T: Point,
+    T: Point + Debug,
 {
     type Error = &'static str;
     fn try_from(arr: Array1<T>) -> Result<Self, Self::Error> {
@@ -85,7 +92,7 @@ where
 #[derive(Debug, Clone)]
 pub struct Point3<T>
 where
-    T: Point,
+    T: Point + Debug,
 {
     pub data: Array1<T>,
     pub x: T,
@@ -95,7 +102,7 @@ where
 
 impl<T> Point3<T>
 where
-    T: Point,
+    T: Point + Debug,
 {
     pub fn new(x: T, y: T, z: T) -> Point3<T> {
         let array = Array1::from_vec(vec![x, y, z]);
@@ -117,7 +124,7 @@ where
 
 impl<T> Deref for Point3<T>
 where
-    T: Point,
+    T: Point + Debug,
 {
     type Target = Array1<T>;
     fn deref(&self) -> &Self::Target {
@@ -127,7 +134,7 @@ where
 
 impl<T> PartialEq for Point3<T>
 where
-    T: Point,
+    T: Point + Debug,
 {
     fn eq(&self, other: &Self) -> bool {
         self.x == other.x && self.y == other.y && self.z == other.z
@@ -136,7 +143,7 @@ where
 
 impl<T> TryFrom<Array1<T>> for Point3<T>
 where
-    T: Point,
+    T: Point + Debug,
 {
     type Error = &'static str;
     fn try_from(arr: Array1<T>) -> Result<Self, Self::Error> {

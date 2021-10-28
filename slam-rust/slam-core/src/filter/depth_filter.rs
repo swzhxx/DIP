@@ -1,9 +1,10 @@
 use std::{f64::consts::PI, marker::PhantomData, thread::current};
 
 use nalgebra::{
-    matrix, vector, AbstractRotation, Const, DMatrix, Dynamic, Matrix2, Matrix3, MatrixXx3, Vector2,
+    matrix, vector, AbstractRotation, Const, DMatrix, Dynamic, Matrix2, Matrix3, MatrixXx3,
+    Vector2, Vector3,
 };
-use ndarray::{array, s, Array, Array1, Array2, ArrayBase, OwnedRepr};
+use ndarray::{array, s, Array, Array1, Array2, ArrayBase, Axis, OwnedRepr};
 use nshare::ToNalgebra;
 
 use crate::utils::{cam2px, ncc, px2cam};
@@ -97,11 +98,13 @@ impl<'a> DepthFilter<'a> {
                 {
                     continue;
                 }
+                let mut pose = pose.clone().to_owned();
+                pose.push(Axis(0), array![0., 0., 0., 1.].view()).unwrap();
                 let pt_ref = array![x as f64, y as f64];
                 let depth = self.depth_matrix[[y, x]];
                 let depth_cov = self.depth_cov2_matrix[[y, x]];
                 if let Some((pt_curr, epiploar_direction)) =
-                    self.epipolar_search(&pt_ref, ref_image, current_image, pose, depth, depth_cov)
+                    self.epipolar_search(&pt_ref, ref_image, current_image, &pose, depth, depth_cov)
                 {
                     // TODO: 更新深度图
                     self.update_depth_filter(
@@ -129,12 +132,13 @@ impl<'a> DepthFilter<'a> {
         let pose = pose
             .clone()
             .into_nalgebra()
-            .reshape_generic(Const::<3>, Dynamic { value: 3 });
+            .reshape_generic(Const::<4>, Dynamic { value: 4 });
         let pt_world = px2cam(&vector![pt_ref[1], pt_ref[0]], &self.camera);
         let pt_world = vector![pt_world.x, pt_world.y, pt_world.z];
         let pt_world = pt_world.normalize() * depth;
-
-        let px_mean_curr = cam2px(&(pose * &pt_world), &self.camera);
+        let pt_world = pose.slice((0, 0), (2, 2)) * (&pt_world) + pose.slice((2, 2), (1, 1));
+        let pt_world = vector!(pt_world[(0, 0)], pt_world[(1, 0)], pt_world[(2, 0)]);
+        let px_mean_curr = cam2px(&pt_world, &self.camera);
         let mut d_min = depth - 3. * depth_cov;
         let d_max = depth + 3. * depth_cov;
         if d_min < 0.1 {

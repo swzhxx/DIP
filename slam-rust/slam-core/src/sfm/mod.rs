@@ -39,14 +39,20 @@ pub fn restoration_perspective_structure<T>(
 where
     T: Point,
 {
-    let (a, b) = find_pose(fundamental);
+    let (mut a, b) = find_pose(fundamental);
     let b = array![b[[2, 1]], b[[0, 2]], b[[1, 1]]];
     // let m = b.dot(&a);
     // let m = m.into_shape((m.len())).unwrap();
-    let mut m = a.clone();
+    a.push_column(b.view());
+    let m = a;
     let m_len = m.len();
-    m.push_column(b.view()).unwrap();
-    let m = m.into_shape(m_len).unwrap();
+    let m = match m.into_shape(m_len) {
+        Ok(val) => val,
+        Err(e) => {
+            panic!("{:?}", e);
+        }
+    };
+
     let match1: Vec<Point3<f64>> = match1.iter().map(|p| p.f().homogeneous()).collect();
     let match2: Vec<Point3<f64>> = match2.iter().map(|p| p.f().homogeneous()).collect();
     let mut lm = LM::new(
@@ -70,15 +76,15 @@ where
             jaco[2] = (1. / error.sqrt() + f64::MIN.abs()) * 2. * x * input[2];
             jaco[3] = (1. / error.sqrt() + f64::MIN.abs()) * 2. * x;
 
-            jaco[4] = (1. / error.sqrt() + f64::MIN.abs()) * 2. * x * input[0];
-            jaco[5] = (1. / error.sqrt() + f64::MIN.abs()) * 2. * x * input[1];
-            jaco[6] = (1. / error.sqrt() + f64::MIN.abs()) * 2. * x * input[2];
-            jaco[7] = (1. / error.sqrt() + f64::MIN.abs()) * 2. * x;
+            jaco[4] = (1. / error.sqrt() + f64::MIN.abs()) * 2. * y * input[0];
+            jaco[5] = (1. / error.sqrt() + f64::MIN.abs()) * 2. * y * input[1];
+            jaco[6] = (1. / error.sqrt() + f64::MIN.abs()) * 2. * y * input[2];
+            jaco[7] = (1. / error.sqrt() + f64::MIN.abs()) * 2. * y;
 
-            jaco[8] = (1. / error.sqrt() + f64::MIN.abs()) * 2. * x * input[0];
-            jaco[8] = (1. / error.sqrt() + f64::MIN.abs()) * 2. * x * input[1];
-            jaco[10] = (1. / error.sqrt() + f64::MIN.abs()) * 2. * x * input[2];
-            jaco[11] = (1. / error.sqrt() + f64::MIN.abs()) * 2. * x;
+            jaco[8] = (1. / error.sqrt() + f64::MIN.abs()) * 2. * z * input[0];
+            jaco[8] = (1. / error.sqrt() + f64::MIN.abs()) * 2. * z * input[1];
+            jaco[10] = (1. / error.sqrt() + f64::MIN.abs()) * 2. * z * input[2];
+            jaco[11] = (1. / error.sqrt() + f64::MIN.abs()) * 2. * z;
             jaco
         })),
         None,
@@ -91,7 +97,7 @@ where
         t = lm.optimize(&m, Some(100), None);
     }
 
-    t.into_shape((4, 3)).unwrap()
+    t.into_shape((4, 3)).expect("t reshape failed")
 }
 
 #[cfg(test)]

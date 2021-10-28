@@ -12,7 +12,7 @@ use slam_core::{
 use wasm_bindgen::prelude::*;
 use web_sys::ImageData;
 
-use crate::utils::image_data_to_gray;
+use crate::utils::{image_data_to_gray, set_panic_hook};
 
 // #[wasm_bindgen]
 // struct Recover3D {
@@ -96,6 +96,7 @@ struct Recover3D {
 impl Recover3D {
     #[wasm_bindgen(constructor)]
     pub fn new(images: Vec<ImageData>) -> Self {
+        set_panic_hook();
         let images = images
             .iter()
             .map(|image: &ImageData| {
@@ -152,7 +153,8 @@ impl Recover3D {
         let reader: Box<dyn for<'a> Fn(&'a Vec<Array2<f64>>) -> ReaderResult<'a>> =
             Box::new(move |images| {
                 let ref_image = &images[0];
-                let curr_image = &images[*i.borrow()];
+                let _i = i.borrow().clone();
+                let curr_image = &images[_i];
                 let curr_features = OFast::new(curr_image).find_features(None);
                 let curr_descriptors = Orb::new(curr_image, &curr_features).create_descriptors();
                 let mut matches = Orb::brief_match(&ref_descriptors, &curr_descriptors, 40);
@@ -167,16 +169,24 @@ impl Recover3D {
                 let fundamental =
                     EightPoint::new(&matches1, &matches2).normalize_find_fundamental();
                 if fundamental == None {
-                    *i.borrow_mut() = *i.borrow() + 1;
+                    *i.borrow_mut() = _i + 1;
                     return (None, None, None);
                 }
+
+                // web_sys::console::log_1(
+                //     &format!(
+                //         " fundamental pose {:?}",
+                //         find_pose(fundamental.as_ref().unwrap())
+                //     )
+                //     .into(),
+                // );
                 let pose = restoration_perspective_structure(
-                    &fundamental.unwrap(),
+                    &fundamental.expect("fundamental faild"),
                     &matches1,
                     &matches2,
                     None,
                 );
-                *i.borrow_mut() = *i.borrow() + 1;
+                *i.borrow_mut() = _i + 1;
                 return (Some(ref_image), Some(curr_image), Some(pose));
             });
         let mut depth_filter = DepthFilter::new(

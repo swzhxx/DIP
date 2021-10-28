@@ -84,7 +84,7 @@ impl<'a, T> LM<'a, T> {
         loop {
             let reshape_fitting = fitting.slice(s![.., ..]).to_shape(len).unwrap().to_owned();
             let errors = self.error(&reshape_fitting.slice(s![..]));
-            let jaco = self.jaco(&reshape_fitting.slice(s![..]), &errors.slice(s![..,..]));
+            let jaco = self.jaco(&reshape_fitting.slice(s![..]), &errors.slice(s![.., ..]));
             let cost = self.cost(&errors.view());
             match self.damp {
                 None => {
@@ -124,7 +124,7 @@ impl<'a, T> LM<'a, T> {
             let reshpe_b = b.to_shape(b.len()).unwrap();
             let h = (&hessian.view() + self.damp.unwrap() * eye).into_nalgebra();
             let rb = reshpe_b.view().into_nalgebra();
-            let decomp = h.cholesky().unwrap();
+            let decomp = h.cholesky()?;
             let mut result: Vec<f64> = vec![];
             for val in decomp.solve(&rb).into_iter() {
                 result.push(*val);

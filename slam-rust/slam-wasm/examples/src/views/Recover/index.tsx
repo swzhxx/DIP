@@ -3,7 +3,7 @@ import House1 from '@/assets/image/1.png'
 import House2 from '@/assets/image/2.png'
 import { initImageElement, imageElementToImageData } from '@/utils/image'
 import { Slam } from '@/slam'
-import { Recover3D } from '@pkg/slam'
+
 import {
   ArcRotateCamera,
   Color4,
@@ -44,7 +44,7 @@ export default (): JSX.Element => {
   const recover = (images: Array<ImageData>) => {
     let refImage = images[0]
 
-    let recover = new Recover3D(images)
+    let recover = new Slam.Recover3D(images)
     let depth = recover.recover_3d_point()
     const el = canvas3dEl.current
     if (!el) {

@@ -13,8 +13,8 @@ pub fn compute_min_vt_eigen_vector(m: &DMatrix<f64>) -> Vec<f64> {
         .iter()
         .enumerate()
         .min_by_key(|&(_, &v)| float_ord::FloatOrd(v))
-        .unwrap();
-    let u = svd.u.unwrap();
+        .expect("single_values failed");
+    let u = svd.u.expect("u failed");
     let column = u.column(ix).to_owned();
     let min_eigen_vector: Vec<f64> = column.ref_ndarray2().to_owned().into_raw_vec();
     min_eigen_vector
