@@ -132,7 +132,7 @@ impl<'a> DepthFilter<'a> {
         let pose = pose
             .clone()
             .into_nalgebra()
-            .reshape_generic(Const::<4>, Dynamic { value: 4 });
+            .reshape_generic(Const::<4>, Dynamic::new(4));
         let pt_world = px2cam(&vector![pt_ref[1], pt_ref[0]], &self.camera);
         let pt_world = vector![pt_world.x, pt_world.y, pt_world.z];
         let pt_world = pt_world.normalize() * depth;
