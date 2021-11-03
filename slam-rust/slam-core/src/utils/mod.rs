@@ -23,7 +23,6 @@ pub fn cam2px(p: &Vector3<f64>, camera_inner_args: &Array2<f64>) -> Vector2<f64>
     vector![(p[0] * fx + cx) / p[2], (p[1] * fy + cy) / p[2]]
 }
 
-
 /// ncc匹配
 ///
 /// @param image1 参考图像
@@ -49,17 +48,17 @@ pub fn ncc(
     // let ncc_area = (2 * ncc_window_size + 1).pow(2);
     let ncc_window_size = ncc_window_size;
     let ref_block = image1.slice(s![
-        pt_ref.0 as usize - ncc_window_size..pt_ref.0 as usize + ncc_window_size,
-        pt_ref.1 as usize - ncc_window_size..pt_ref.1 as usize + ncc_window_size
+        (pt_ref.0 as usize - ncc_window_size)..(pt_ref.0 as usize + ncc_window_size + 1),
+        (pt_ref.1 as usize - ncc_window_size)..(pt_ref.1 as usize + ncc_window_size + 1)
     ]);
     let curr_block = image2.slice(s![
-        px_curr.0 as usize - ncc_window_size..px_curr.0 as usize + ncc_window_size,
-        px_curr.1 as usize - ncc_window_size..px_curr.1 as usize + ncc_window_size
+        (px_curr.0 as usize - ncc_window_size)..(px_curr.0 as usize + ncc_window_size + 1),
+        (px_curr.1 as usize - ncc_window_size)..(px_curr.1 as usize + ncc_window_size + 1)
     ]);
-    let mean_ref = ref_block.mean().unwrap();
+    let mean_ref = ref_block.mean().expect("mean_ref error");
     let mean_ref_mat =
         Array::from_elem([ncc_window_size * 2 + 1, ncc_window_size * 2 + 1], mean_ref);
-    let mean_curr = curr_block.mean().unwrap();
+    let mean_curr = curr_block.mean().expect("mean_curr error");
     let mean_curr_mat = Array::from_elem(
         [ncc_window_size * 2 + 1, ncc_window_size * 2 + 1],
         mean_curr,
@@ -76,4 +75,19 @@ pub fn ncc(
         .sqrt();
 
     numberator / (divisior + 1e-18)
+}
+
+#[cfg(test)]
+mod test {
+    use ndarray::Array;
+
+    use super::ncc;
+
+    #[test]
+    fn test_ncc() {
+        let a = Array::from_elem((100, 100), 0.);
+        let b = Array::from_elem((100, 100), 1.);
+
+        ncc(&a, &b, (50., 50.), (50., 50.), None);
+    }
 }

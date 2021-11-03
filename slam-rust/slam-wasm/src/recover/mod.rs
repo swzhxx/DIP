@@ -128,11 +128,11 @@ impl Recover3D {
         for y in 0..shape[0] {
             for x in 0..shape[1] {
                 let depth = depths[[y, x]];
-                let color = ref_image[[y, x]];
+                // let color = ref_image[[y, x]];
                 point_cloud.push(x as f64 * depth);
                 point_cloud.push(y as f64 * depth);
                 point_cloud.push(depth);
-                point_cloud.push(color);
+                // point_cloud.push(color);
             }
         }
         point_cloud
@@ -152,8 +152,12 @@ impl Recover3D {
 
         let reader: Box<dyn for<'a> Fn(&'a Vec<Array2<f64>>) -> ReaderResult<'a>> =
             Box::new(move |images| {
+                web_sys::console::log_1(&format!("reader....").into());
                 let ref_image = &images[0];
                 let _i = i.borrow().clone();
+                if _i >= images.len() {
+                    return (None, None, None);
+                }
                 let curr_image = &images[_i];
                 let curr_features = OFast::new(curr_image).find_features(None);
                 let curr_descriptors = Orb::new(curr_image, &curr_features).create_descriptors();
@@ -173,19 +177,13 @@ impl Recover3D {
                     return (None, None, None);
                 }
 
-                // web_sys::console::log_1(
-                //     &format!(
-                //         " fundamental pose {:?}",
-                //         find_pose(fundamental.as_ref().unwrap())
-                //     )
-                //     .into(),
-                // );
                 let pose = restoration_perspective_structure(
                     &fundamental.expect("fundamental faild"),
                     &matches1,
                     &matches2,
                     None,
                 );
+                web_sys::console::log_1(&format!(" fundamental pose {:?}", &pose).into());
                 *i.borrow_mut() = _i + 1;
                 return (Some(ref_image), Some(curr_image), Some(pose));
             });

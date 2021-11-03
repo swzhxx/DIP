@@ -37,6 +37,7 @@ export default (): JSX.Element => {
         return
       }
       setImages([house1ImageData, house2ImageData])
+      setCanvasRect({ width: house1.width, height: house1.height })
       recover([house1ImageData, house2ImageData])
     })()
   }, [])
@@ -45,7 +46,8 @@ export default (): JSX.Element => {
     let refImage = images[0]
 
     let recover = new Slam.Recover3D(images)
-    let depth = recover.recover_3d_point()
+    let points = recover.recover_3d_point()
+    console.log(`points`, points)
     const el = canvas3dEl.current
     if (!el) {
       return
@@ -70,6 +72,11 @@ export default (): JSX.Element => {
         i: number,
         s: any
       ) {
+        let x = points[i * 3]
+        let y = points[i * 3 + 1]
+        let z = points[i * 3 + 2]
+        particle.position = new Vector3(x, y, z)
+        particle.color = new Color4(255, 255, 255, 1)
         //diff between using i and s can be seen by removing comment marker from line 14
         // particle.position = new Vector3(
         //   recoverInfo.points3d[3 * i] * 10000,
@@ -84,7 +91,7 @@ export default (): JSX.Element => {
         //   recoverInfo.colors[4 * i + 4]
         // )
       }
-      pcs.addPoints(10000, setPoint)
+      pcs.addPoints(points.length / 3, setPoint)
       pcs.buildMeshAsync()
       return scene
     }

@@ -98,8 +98,10 @@ impl<'a> DepthFilter<'a> {
                 {
                     continue;
                 }
+                
                 let mut pose = pose.clone().to_owned();
-                pose.push(Axis(0), array![0., 0., 0., 1.].view()).unwrap();
+                pose.push(Axis(0), array![0., 0., 0., 1.].view())
+                    .expect(&format!("pose {:?}", pose));
                 let pt_ref = array![x as f64, y as f64];
                 let depth = self.depth_matrix[[y, x]];
                 let depth_cov = self.depth_cov2_matrix[[y, x]];
@@ -129,14 +131,12 @@ impl<'a> DepthFilter<'a> {
         depth: f64,
         depth_cov: f64,
     ) -> Option<(Vector2<f64>, Vector2<f64>)> {
-        let pose = pose
-            .clone()
-            .into_nalgebra()
-            .reshape_generic(Const::<4>, Dynamic::new(4));
+        let pose = pose.clone().into_nalgebra();
+
         let pt_world = px2cam(&vector![pt_ref[1], pt_ref[0]], &self.camera);
         let pt_world = vector![pt_world.x, pt_world.y, pt_world.z];
         let pt_world = pt_world.normalize() * depth;
-        let pt_world = pose.slice((0, 0), (2, 2)) * (&pt_world) + pose.slice((2, 2), (1, 1));
+        let pt_world = pose.slice((0, 0), (3, 3)) * (&pt_world) + pose.slice((0, 3), (3, 1));
         let pt_world = vector!(pt_world[(0, 0)], pt_world[(1, 0)], pt_world[(2, 0)]);
         let px_mean_curr = cam2px(&pt_world, &self.camera);
         let mut d_min = depth - 3. * depth_cov;
@@ -158,6 +158,7 @@ impl<'a> DepthFilter<'a> {
         while l <= half_length {
             let px_curr = px_mean_curr + l * epipolar_direction;
             if !inside(&px_curr, self.width, self.height) {
+                l = l + 0.7;
                 continue;
             }
             let ncc_value = ncc(
@@ -173,6 +174,7 @@ impl<'a> DepthFilter<'a> {
             }
             l = l + 0.7;
         }
+
         if best_ncc < 0.85 {
             None
         } else {

@@ -97,7 +97,7 @@ where
         t = lm.optimize(&m, Some(100), None);
     }
 
-    t.into_shape((4, 3)).expect("t reshape failed")
+    t.into_shape((3, 4)).expect("t reshape failed")
 }
 
 #[cfg(test)]
