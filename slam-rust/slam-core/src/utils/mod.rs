@@ -20,7 +20,7 @@ pub fn cam2px(p: &Vector3<f64>, camera_inner_args: &Array2<f64>) -> Vector2<f64>
     let cy = camera_inner_args[[1, 2]];
     let fx = camera_inner_args[[0, 0]];
     let fy = camera_inner_args[[1, 1]];
-    vector![(p[0] * fx + cx) / p[2], (p[1] * fy + cy) / p[2]]
+    vector![p[0] * fx / p[2] + cx, p[1] * fy / p[2] + cy]
 }
 
 /// ncc匹配

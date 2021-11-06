@@ -62,7 +62,7 @@ impl<'a> DepthFilter<'a> {
             reader, // images,
             // ref_image: None,
             // current_image: None,
-            camera: array![[1., 0., 1.], [0., 1., 1.], [0., 0., 1.]],
+            camera: array![[481., 0., 319.5], [0., 480., 239.5], [0., 0., 1.]],
         }
     }
 
@@ -91,6 +91,10 @@ impl<'a> DepthFilter<'a> {
         current_image: &Array2<f64>,
         pose: &Array2<f64>,
     ) {
+        let mut pose = pose.clone().to_owned();
+        pose.push(Axis(0), array![0., 0., 0., 1.].view())
+            .expect(&format!("pose {:?}", pose));
+        println!("pose {:?}", pose);
         for y in border..(self.height - border) {
             for x in border..(self.width - border) {
                 if self.depth_cov2_matrix[[y, x]] < self.min_depth
@@ -98,10 +102,6 @@ impl<'a> DepthFilter<'a> {
                 {
                     continue;
                 }
-                
-                let mut pose = pose.clone().to_owned();
-                pose.push(Axis(0), array![0., 0., 0., 1.].view())
-                    .expect(&format!("pose {:?}", pose));
                 let pt_ref = array![x as f64, y as f64];
                 let depth = self.depth_matrix[[y, x]];
                 let depth_cov = self.depth_cov2_matrix[[y, x]];
@@ -133,22 +133,39 @@ impl<'a> DepthFilter<'a> {
     ) -> Option<(Vector2<f64>, Vector2<f64>)> {
         let pose = pose.clone().into_nalgebra();
 
-        let pt_world = px2cam(&vector![pt_ref[1], pt_ref[0]], &self.camera);
-        let pt_world = vector![pt_world.x, pt_world.y, pt_world.z];
-        let pt_world = pt_world.normalize() * depth;
-        let pt_world = pose.slice((0, 0), (3, 3)) * (&pt_world) + pose.slice((0, 3), (3, 1));
-        let pt_world = vector!(pt_world[(0, 0)], pt_world[(1, 0)], pt_world[(2, 0)]);
-        let px_mean_curr = cam2px(&pt_world, &self.camera);
+        let f_ref = px2cam(&vector![pt_ref[1], pt_ref[0]], &self.camera);
+        let f_ref = f_ref.normalize();
+        let mut P_ref = (f_ref * depth).to_homogeneous();
+        P_ref[3] = 1.;
+        // let P_ref = pose.slice((0, 0), (3, 3)) * (&P_ref) + pose.slice((0, 3), (3, 1));
+        let P_ref_t = &pose * &P_ref;
+        let px_mean_curr = cam2px(&vector![P_ref_t[0], P_ref_t[1], P_ref_t[2]], &self.camera);
+
         let mut d_min = depth - 3. * depth_cov;
         let d_max = depth + 3. * depth_cov;
         if d_min < 0.1 {
             d_min = 0.1
         }
-        let px_min_curr = cam2px(&(pt_world * d_min), &self.camera);
-        let px_max_curr = cam2px(&(pt_world * d_max), &self.camera);
+
+        let mut min_f_ref = (&f_ref * d_min).to_homogeneous();
+        min_f_ref[3] = 1.;
+        let mut max_f_ref = (&f_ref * d_max).to_homogeneous();
+        max_f_ref[3] = 1.;
+        let min_f_ref_rt = &pose * min_f_ref;
+        let max_f_ref_rt = &pose * max_f_ref;
+
+        let px_min_curr = cam2px(
+            &vector![min_f_ref_rt[0], min_f_ref_rt[1], min_f_ref_rt[2]],
+            &self.camera,
+        );
+        let px_max_curr = cam2px(
+            &vector![max_f_ref_rt[0], max_f_ref_rt[1], max_f_ref_rt[2]],
+            &self.camera,
+        );
         let epipolar_line = px_max_curr - px_min_curr;
         let epipolar_direction = epipolar_line.normalize();
         let mut half_length = 0.5 * epipolar_line.norm();
+
         if half_length > 100. {
             half_length = 100.;
         }
@@ -174,7 +191,9 @@ impl<'a> DepthFilter<'a> {
             }
             l = l + 0.7;
         }
-
+        if best_ncc != -1. {
+            println!("best_ncc {:?}", best_ncc);
+        }
         if best_ncc < 0.85 {
             None
         } else {
@@ -257,9 +276,97 @@ pub type ReaderResult<'b> = (
 );
 
 fn inside(pt: &Vector2<f64>, width: usize, height: usize) -> bool {
-    let boarder: f64 = 20.;
+    let boarder: f64 = 7.;
     return pt[(0, 0)] >= boarder
         && pt[(1, 0)] >= boarder
         && pt[(0, 0)] + boarder < width as f64
-        && pt[(1, 0)] + boarder <= height as f64;
+        && pt[(1, 0)] + boarder < height as f64;
+}
+
+#[cfg(test)]
+mod test {
+    use std::cell::RefCell;
+
+    use image::{self, DynamicImage, GenericImageView};
+    use ndarray::{array, Array, Array2};
+
+    use crate::{
+        features::fast::OFast,
+        filter::depth_filter::ReaderResult,
+        matches::orb::Orb,
+        sfm::{restoration_perspective_structure, EightPoint},
+    };
+
+    use super::DepthFilter;
+    #[test]
+    fn test_depth_filter() {
+        let image_1 = image::open("D:/dip/DIP/slam-rust/slam-core/tests/images/1.png")
+            .unwrap()
+            .grayscale();
+        let image_2 = image::open("D:/dip/DIP/slam-rust/slam-core/tests/images/2.png")
+            .unwrap()
+            .grayscale();
+        let (width, height) = image_1.dimensions();
+
+        let image_to_ndarray = |img: DynamicImage| {
+            let mut img_array = Array::from_elem((height as usize, width as usize), 0.);
+            for y in 0..height {
+                for x in 0..width {
+                    let pixel = img.get_pixel(x, y).0.clone();
+                    let gray = &pixel[0];
+                    img_array[[y as usize, x as usize]] = *gray as f64
+                }
+            }
+            img_array
+        };
+        let image_1_nd = image_to_ndarray(image_1);
+        let image_2_nd = image_to_ndarray(image_2);
+
+        let images = vec![image_1_nd, image_2_nd];
+        let mut i = RefCell::new(0);
+        let reader: Box<dyn for<'a> Fn(&'a Vec<Array2<f64>>) -> ReaderResult<'a>> =
+            Box::new(move |images| {
+                let _i = *i.borrow();
+                if _i > 1 {
+                    return (None, None, None);
+                }
+                let ref_image = &images[0];
+                let curr_image = &images[1];
+                let pose = array![
+                    [
+                        -0.00008609997916600735,
+                        0.00011495784016191987,
+                        0.0000000016169224270271885,
+                        -0.000054528818174679595,
+                    ],
+                    [
+                        0.00007280507185945444,
+                        -0.0000000008917072253742108,
+                        4.412596283672692,
+                        -5.891552394706841,
+                    ],
+                    [
+                        -0.00003382863255759994,
+                        0.8003955227345557,
+                        0.5994722734675059,
+                        0.0,
+                    ],
+                ];
+
+                *i.borrow_mut() = _i + 1;
+                (Some(ref_image), Some(curr_image), Some(pose))
+            });
+        let mut depth_filter = DepthFilter::new(
+            &images,
+            height as usize,
+            width as usize,
+            None,
+            None,
+            None,
+            None,
+            reader,
+        );
+        depth_filter.excute();
+        println!("depth_matrix {:?}", depth_filter.depth_matrix);
+    }
 }
