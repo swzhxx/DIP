@@ -176,13 +176,20 @@ impl Recover3D {
                     *i.borrow_mut() = _i + 1;
                     return (None, None, None);
                 }
+                web_sys::console::log_1(&format!(" fundamental  {:?}", &fundamental).into());  
+                // let pose = restoration_perspective_structure(
+                //     &fundamental.expect("fundamental faild"),
+                //     &matches1,
+                //     &matches2,
+                //     None,
+                // );
 
-                let pose = restoration_perspective_structure(
-                    &fundamental.expect("fundamental faild"),
-                    &matches1,
-                    &matches2,
-                    None,
-                );
+                let (mut a, b) = find_pose(&fundamental.expect("fundamental faild"));
+                let b = array![b[[2, 1]], b[[0, 2]], b[[1, 0]]];
+                // let m = b.dot(&a);
+                // let m = m.into_shape((m.len())).unwrap();
+                a.push_column(b.view());
+                let pose = a;
                 web_sys::console::log_1(&format!(" fundamental pose {:?}", &pose).into());
                 *i.borrow_mut() = _i + 1;
                 return (Some(ref_image), Some(curr_image), Some(pose));

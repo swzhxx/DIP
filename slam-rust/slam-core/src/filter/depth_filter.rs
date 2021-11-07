@@ -133,7 +133,7 @@ impl<'a> DepthFilter<'a> {
     ) -> Option<(Vector2<f64>, Vector2<f64>)> {
         let pose = pose.clone().into_nalgebra();
 
-        let f_ref = px2cam(&vector![pt_ref[1], pt_ref[0]], &self.camera);
+        let f_ref = px2cam(&vector![pt_ref[0], pt_ref[1]], &self.camera);
         let f_ref = f_ref.normalize();
         let mut P_ref = (f_ref * depth).to_homogeneous();
         P_ref[3] = 1.;
@@ -294,7 +294,7 @@ mod test {
         features::fast::OFast,
         filter::depth_filter::ReaderResult,
         matches::orb::Orb,
-        sfm::{restoration_perspective_structure, EightPoint},
+        sfm::{find_pose, restoration_perspective_structure, EightPoint},
     };
 
     use super::DepthFilter;
@@ -324,6 +324,9 @@ mod test {
 
         let images = vec![image_1_nd, image_2_nd];
         let mut i = RefCell::new(0);
+
+        // let ref_features = OFast::new(&images[0]).find_features(None);
+        // let ref_descriptors = Orb::new(&images[0], &ref_features).create_descriptors();
         let reader: Box<dyn for<'a> Fn(&'a Vec<Array2<f64>>) -> ReaderResult<'a>> =
             Box::new(move |images| {
                 let _i = *i.borrow();
@@ -332,26 +335,36 @@ mod test {
                 }
                 let ref_image = &images[0];
                 let curr_image = &images[1];
-                let pose = array![
-                    [
-                        -0.00008609997916600735,
-                        0.00011495784016191987,
-                        0.0000000016169224270271885,
-                        -0.000054528818174679595,
-                    ],
-                    [
-                        0.00007280507185945444,
-                        -0.0000000008917072253742108,
-                        4.412596283672692,
-                        -5.891552394706841,
-                    ],
-                    [
-                        -0.00003382863255759994,
-                        0.8003955227345557,
-                        0.5994722734675059,
-                        0.0,
-                    ],
+
+                // let curr_features = OFast::new(curr_image).find_features(None);
+                // let curr_descriptors = Orb::new(curr_image, &curr_features).create_descriptors();
+                // let mut matches = Orb::brief_match(&ref_descriptors, &curr_descriptors, 40);
+                // let matches1 = matches
+                //     .iter()
+                //     .map(|dmatch| ref_features[dmatch.i1].clone().f())
+                //     .collect();
+                // let matches2 = matches
+                //     .iter()
+                //     .map(|dmatch| curr_features[dmatch.i2].clone().f())
+                //     .collect();
+                // let fundamental =
+                //     EightPoint::new(&matches1, &matches2).normalize_find_fundamental();
+                // if fundamental == None {
+                //     *i.borrow_mut() = _i + 1;
+                //     return (None, None, None);
+                // }
+
+                let fundamental = array![
+                    [4.5444375e-6, 0.000133338555, -0.0179849924],
+                    [-0.00001275657012, 2.266794e-5, -0.0141667842925],
+                    [0.01814994639952877, 0.0041460558715, 1.]
                 ];
+                let (mut a, b) = find_pose(&fundamental);
+                let b = array![b[[2, 1]], b[[0, 2]], b[[1, 0]]];
+                // let m = b.dot(&a);
+                // let m = m.into_shape((m.len())).unwrap();
+                a.push_column(b.view());
+                let pose = a;
 
                 *i.borrow_mut() = _i + 1;
                 (Some(ref_image), Some(curr_image), Some(pose))

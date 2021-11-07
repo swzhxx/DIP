@@ -40,7 +40,7 @@ where
     T: Point,
 {
     let (mut a, b) = find_pose(fundamental);
-    let b = array![b[[2, 1]], b[[0, 2]], b[[1, 1]]];
+    let b = array![b[[2, 1]], b[[0, 2]], b[[1, 0]]];
     // let m = b.dot(&a);
     // let m = m.into_shape((m.len())).unwrap();
     a.push_column(b.view());
