@@ -10,6 +10,7 @@ import {
   Engine,
   PointsCloudSystem,
   Scene,
+  FreeCamera,
   Vector3,
 } from 'babylonjs'
 
@@ -57,12 +58,21 @@ export default (): JSX.Element => {
       let scene = new Scene(engine)
       var camera = new ArcRotateCamera(
         'Camera',
-        -Math.PI / 2,
-        Math.PI / 3,
+        0,
+        0,
         8,
-        new Vector3(0, 0, 0),
+        new Vector3(refImage.width / 2, refImage.height / 2, 0),
         scene
       )
+      camera.setPosition(
+        new Vector3(refImage.width / 2, refImage.height / 2, 2000)
+      )
+      // let camera = new FreeCamera(
+      //   'Camera',
+      //   new Vector3(refImage.width / 2, refImage.height / 2, 1000),
+      //   scene
+      // )
+      // let camera = new UniversalCamera()
       camera.attachControl(el, true)
 
       var pcs = new PointsCloudSystem('pcs', 2, scene)
@@ -76,7 +86,13 @@ export default (): JSX.Element => {
         let y = points[i * 3 + 1]
         let z = points[i * 3 + 2]
         particle.position = new Vector3(x, y, z)
-        particle.color = new Color4(255, 255, 255, 1)
+        particle.color = new Color4(
+          refImage.data[i * 4] / 255,
+          refImage.data[i * 4 + 1] / 255,
+          refImage.data[i * 4 + 2] / 255,
+          255
+        )
+        console.log(`partical color`, particle.color)
         //diff between using i and s can be seen by removing comment marker from line 14
         // particle.position = new Vector3(
         //   recoverInfo.points3d[3 * i] * 10000,

@@ -62,7 +62,7 @@ impl<'a> DepthFilter<'a> {
             reader, // images,
             // ref_image: None,
             // current_image: None,
-            camera: array![[481., 0., 319.5], [0., 480., 239.5], [0., 0., 1.]],
+            camera: array![[1., 0., 0.], [0., 1., 0.], [0., 0., 1.]],
         }
     }
 
@@ -134,6 +134,7 @@ impl<'a> DepthFilter<'a> {
         let pose = pose.clone().into_nalgebra();
 
         let f_ref = px2cam(&vector![pt_ref[0], pt_ref[1]], &self.camera);
+        // println!("f_ref  norm {:?}", f_ref.norm());
         let f_ref = f_ref.normalize();
         let mut P_ref = (f_ref * depth).to_homogeneous();
         P_ref[3] = 1.;
@@ -172,6 +173,10 @@ impl<'a> DepthFilter<'a> {
         let mut best_ncc = -1.;
         let mut best_px_curr = vector![0., 0.];
         let mut l = -half_length;
+        let v = vector![pt_ref[0], pt_ref[1]];
+        if !inside(&v, self.width, self.height) {
+            return None;
+        }
         while l <= half_length {
             let px_curr = px_mean_curr + l * epipolar_direction;
             if !inside(&px_curr, self.width, self.height) {
@@ -191,10 +196,7 @@ impl<'a> DepthFilter<'a> {
             }
             l = l + 0.7;
         }
-        if best_ncc != -1. {
-            println!("best_ncc {:?}", best_ncc);
-        }
-        if best_ncc < 0.85 {
+        if best_ncc < 0.8 {
             None
         } else {
             Some((best_px_curr, epipolar_direction))
@@ -210,6 +212,7 @@ impl<'a> DepthFilter<'a> {
         pose: &Array2<f64>,
         epipolar_direction: &Vector2<f64>,
     ) {
+        println!("pose {:?}", pose);
         // let pose = pose.view().into_nalgebra();
         let f_ref = px2cam(pt_ref, &self.camera);
         let f_ref = f_ref.normalize();
@@ -218,15 +221,15 @@ impl<'a> DepthFilter<'a> {
 
         let R = pose.slice(s![0..3, 0..3]).to_owned();
         let R: DMatrix<f64> = R.into_nalgebra().try_inverse().unwrap();
-        let t = vector![pose[[3, 0]], pose[[3, 1]], pose[[3, 2]]];
+        let t = vector![pose[[0, 3]], pose[[1, 3]], pose[[2, 3]]];
 
         let f2 = R * f_curr;
-        let b = vector![(f_ref.transpose() * t).sum(), (&f2.transpose() * t).sum()];
+        let b = vector![f_ref.dot(&t), t.dot(&f2)];
         let A: Matrix2<f64> = Matrix2::new(
-            (f_ref.transpose() * f_ref).sum(),
-            (-f_ref.transpose() * &f2).sum(),
-            (&f2.transpose() * f_ref).sum(),
-            (-f2.transpose() * &f2).sum(),
+            f_ref.dot(&f_ref),
+            -f_ref.dot(&f2),
+            f2.dot(&f_ref),
+            -f2.dot(&f2),
         );
         let ans = A.try_inverse().unwrap() * b;
 
@@ -234,6 +237,8 @@ impl<'a> DepthFilter<'a> {
         let xn = ans[1] * f2 + t;
         let p_esti = (xm + xn) / 2.;
         let dept_estimation = p_esti.norm();
+       // println!("dept_estimation {:?}", dept_estimation);
+       // self.depth_matrix[(pt_ref.y as usize, pt_ref.x as usize)] = dept_estimation;
 
         // 计算不确定性
         let p = f_ref * dept_estimation;
@@ -262,7 +267,7 @@ impl<'a> DepthFilter<'a> {
 
         let mu_fuse = d_cov2 * mu + sigma2 * dept_estimation;
         let sigma_fuse2 = (sigma2 * d_cov2) / (sigma2 + d_cov2);
-
+        println!("mu_fuse {:?}", mu_fuse);
         self.depth_matrix[(pt_ref.y as usize, pt_ref.x as usize)] = mu_fuse;
         self.depth_cov2_matrix[(pt_ref.y as usize, pt_ref.x as usize)] = sigma_fuse2;
     }
@@ -276,11 +281,13 @@ pub type ReaderResult<'b> = (
 );
 
 fn inside(pt: &Vector2<f64>, width: usize, height: usize) -> bool {
-    let boarder: f64 = 7.;
-    return pt[(0, 0)] >= boarder
-        && pt[(1, 0)] >= boarder
-        && pt[(0, 0)] + boarder < width as f64
-        && pt[(1, 0)] + boarder < height as f64;
+    let _border: f64 = 20.;
+    let x = pt[(0, 0)];
+    let y = pt[(1, 0)];
+    return x >= _border as f64
+        && y >= _border as f64
+        && (x + _border) < width as f64
+        && (y + _border) < height as f64;
 }
 
 #[cfg(test)]
@@ -355,9 +362,21 @@ mod test {
                 // }
 
                 let fundamental = array![
-                    [4.5444375e-6, 0.000133338555, -0.0179849924],
-                    [-0.00001275657012, 2.266794e-5, -0.0141667842925],
-                    [0.01814994639952877, 0.0041460558715, 1.]
+                    [
+                        -0.000000000872403124614239,
+                        -0.0000000041118031630738915,
+                        0.0000011439246009686824
+                    ],
+                    [
+                        0.000000004138277117787244,
+                        -0.00000000025029909169952103,
+                        -0.0000011347366093557734
+                    ],
+                    [
+                        -0.0000007055956090073091,
+                        0.0000011968556493131393,
+                        -0.000057254767381884956
+                    ]
                 ];
                 let (mut a, b) = find_pose(&fundamental);
                 let b = array![b[[2, 1]], b[[0, 2]], b[[1, 0]]];

@@ -48,12 +48,12 @@ pub fn ncc(
     // let ncc_area = (2 * ncc_window_size + 1).pow(2);
     let ncc_window_size = ncc_window_size;
     let ref_block = image1.slice(s![
-        (pt_ref.0 as usize - ncc_window_size)..(pt_ref.0 as usize + ncc_window_size + 1),
-        (pt_ref.1 as usize - ncc_window_size)..(pt_ref.1 as usize + ncc_window_size + 1)
+        (pt_ref.1 as usize - ncc_window_size)..(pt_ref.1 as usize + ncc_window_size + 1),
+        (pt_ref.0 as usize - ncc_window_size)..(pt_ref.0 as usize + ncc_window_size + 1)
     ]);
     let curr_block = image2.slice(s![
-        (px_curr.0 as usize - ncc_window_size)..(px_curr.0 as usize + ncc_window_size + 1),
-        (px_curr.1 as usize - ncc_window_size)..(px_curr.1 as usize + ncc_window_size + 1)
+        (px_curr.1 as usize - ncc_window_size)..(px_curr.1 as usize + ncc_window_size + 1),
+        (px_curr.0 as usize - ncc_window_size)..(px_curr.0 as usize + ncc_window_size + 1)
     ]);
     let mean_ref = ref_block.mean().expect("mean_ref error");
     let mean_ref_mat =
