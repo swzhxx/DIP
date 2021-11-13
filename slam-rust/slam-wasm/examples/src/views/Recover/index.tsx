@@ -65,7 +65,7 @@ export default (): JSX.Element => {
         scene
       )
       camera.setPosition(
-        new Vector3(refImage.width / 2, refImage.height / 2, 2000)
+        new Vector3(refImage.width / 2, refImage.height / 2, 4000)
       )
       // let camera = new FreeCamera(
       //   'Camera',
@@ -83,7 +83,7 @@ export default (): JSX.Element => {
         s: any
       ) {
         let x = points[i * 3]
-        let y = points[i * 3 + 1]
+        let y = refImage.height - points[i * 3 + 1]
         let z = points[i * 3 + 2]
         particle.position = new Vector3(x, y, z)
         particle.color = new Color4(
@@ -92,6 +92,15 @@ export default (): JSX.Element => {
           refImage.data[i * 4 + 2] / 255,
           255
         )
+
+        // //深度图
+        // particle.position = new Vector3(
+        //   parseInt(i / refImage.height + ''),
+        //   parseInt(i / refImage.width + ''),
+        //   0
+        // )
+        // particle.color = new Color4(z , z , z , 255)
+
         console.log(`partical color`, particle.color)
         //diff between using i and s can be seen by removing comment marker from line 14
         // particle.position = new Vector3(
