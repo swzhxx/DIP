@@ -12,7 +12,7 @@ use slam_core::{
 use wasm_bindgen::prelude::*;
 use web_sys::ImageData;
 
-use crate::utils::{image_data_to_gray, set_panic_hook};
+use crate::utils::{image_data_to_gray, nomalize_gray_color, set_panic_hook};
 
 // #[wasm_bindgen]
 // struct Recover3D {
@@ -137,6 +137,12 @@ impl Recover3D {
         }
         point_cloud
     }
+    pub fn get_normalize_depth(&mut self) -> Vec<f64> {
+        let depths = self.compute_depth();
+        let mut nomalize_depths = nomalize_gray_color(&depths);
+        let nomalize_depths = 255. - nomalize_depths;
+        nomalize_depths.into_raw_vec()
+    }
 }
 
 impl Recover3D {
@@ -176,21 +182,20 @@ impl Recover3D {
                     *i.borrow_mut() = _i + 1;
                     return (None, None, None);
                 }
-                web_sys::console::log_1(&format!(" fundamental  {:?}", &fundamental).into());  
+                web_sys::console::log_1(&format!(" fundamental  {:?}", &fundamental).into());
                 // let pose = restoration_perspective_structure(
                 //     &fundamental.expect("fundamental faild"),
                 //     &matches1,
                 //     &matches2,
                 //     None,
                 // );
-
+                // web_sys::console::log_1(&format!(" pose1  {:?}", &fundamental).into());
                 let (mut a, b) = find_pose(&fundamental.expect("fundamental faild"));
                 let b = array![b[[2, 1]], b[[0, 2]], b[[1, 0]]];
-                // let m = b.dot(&a);
-                // let m = m.into_shape((m.len())).unwrap();
+
                 a.push_column(b.view());
                 let pose = a;
-                web_sys::console::log_1(&format!(" fundamental pose {:?}", &pose).into());
+                web_sys::console::log_1(&format!(" pose2 {:?}", &pose).into());
                 *i.borrow_mut() = _i + 1;
                 return (Some(ref_image), Some(curr_image), Some(pose));
             });

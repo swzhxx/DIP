@@ -196,7 +196,7 @@ impl<'a> DepthFilter<'a> {
             }
             l = l + 0.7;
         }
-        if best_ncc < 0.8 {
+        if best_ncc < 0.6 {
             None
         } else {
             Some((best_px_curr, epipolar_direction))
@@ -237,8 +237,8 @@ impl<'a> DepthFilter<'a> {
         let xn = ans[1] * f2 + t;
         let p_esti = (xm + xn) / 2.;
         let dept_estimation = p_esti.norm();
-       // println!("dept_estimation {:?}", dept_estimation);
-       // self.depth_matrix[(pt_ref.y as usize, pt_ref.x as usize)] = dept_estimation;
+        // println!("dept_estimation {:?}", dept_estimation);
+        // self.depth_matrix[(pt_ref.y as usize, pt_ref.x as usize)] = dept_estimation;
 
         // 计算不确定性
         let p = f_ref * dept_estimation;

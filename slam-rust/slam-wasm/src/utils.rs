@@ -1,4 +1,5 @@
-use ndarray::{s, Array2, Array3};
+use ndarray::{s, Array, Array2, Array3};
+use ndarray_stats::QuantileExt;
 use wasm_bindgen::prelude::*;
 use web_sys::ImageData;
 pub fn set_panic_hook() {
@@ -48,4 +49,24 @@ pub fn image_data_to_gray(img: &ImageData) -> Array2<u8> {
 
     let gray_image_data = rgba_to_gray(&array_data);
     gray_image_data
+}
+
+pub fn nomalize_gray_color(img: &Array2<f64>) -> Array2<f64> {
+    let max = img.max().unwrap().clone();
+    let min = img.min().unwrap().clone();
+    // let mean = img.mean().unwrap();
+    web_sys::console::log_1(&format!("max  {:?}", max).into());
+    web_sys::console::log_1(&format!("min {:?}", min).into());
+    let height = img.shape()[0];
+    let width = img.shape()[1];
+    let mut temp = Array::from_elem((height, width), 0.);
+    for y in 0..height {
+        for x in 0..width {
+            let value = img[[y, x]];
+            temp[[y, x]] = (value - min) / (max - min)
+        }
+    }
+
+    temp = temp * 255.;
+    return temp;
 }
