@@ -14,11 +14,12 @@ use crate::{
 /// 通过Fundamental矩阵计算旋转和平移矩阵
 /// 获得一个旋转矩阵，和一个平移向量的反对称矩阵
 pub fn find_pose(fundamental: &Array2<f64>) -> (Array2<f64>, Array2<f64>) {
+    let f_t = fundamental.t().clone().to_owned().into_nalgebra();
     let f = fundamental.clone().to_owned().into_nalgebra();
     // let svd = f.svd(false, true);
     // // let v_t = svd.v_t.unwrap();
     // let b = svd.v_t.unwrap();
-    let less_eigen_vector = compute_min_vt_eigen_vector(&f);
+    let less_eigen_vector = compute_min_vt_eigen_vector(&f_t);
     let b = array![
         [0., -less_eigen_vector[2], less_eigen_vector[1]],
         [less_eigen_vector[2], 0., -less_eigen_vector[0]],
