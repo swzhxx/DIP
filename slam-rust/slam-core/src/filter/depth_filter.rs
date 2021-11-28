@@ -133,27 +133,29 @@ impl<'a> DepthFilter<'a> {
     ) -> Option<(Vector2<f64>, Vector2<f64>)> {
         let pose = pose.clone().into_nalgebra();
 
-        let f_ref = px2cam(&vector![pt_ref[0], pt_ref[1]], &self.camera);
-        // println!("f_ref  norm {:?}", f_ref.norm());
-        let f_ref = f_ref.normalize();
+        let f_ref = px2cam(&vector![pt_ref[0], pt_ref[1]], &self.camera).normalize();
+
         let mut P_ref = (f_ref * depth).to_homogeneous();
         P_ref[3] = 1.;
-        // let P_ref = pose.slice((0, 0), (3, 3)) * (&P_ref) + pose.slice((0, 3), (3, 1));
-        let P_ref_t = &pose * &P_ref;
-        let px_mean_curr = cam2px(&vector![P_ref_t[0], P_ref_t[1], P_ref_t[2]], &self.camera);
-
         let mut d_min = depth - 3. * depth_cov;
         let d_max = depth + 3. * depth_cov;
         if d_min < 0.1 {
             d_min = 0.1
         }
+        let mut min_P_ref = (&f_ref * d_min).to_homogeneous();
+        min_P_ref[3] = 1.;
+        let mut max_P_ref = (&f_ref * d_max).to_homogeneous();
+        max_P_ref[3] = 1.;
+        // let P_ref = pose.slice((0, 0), (3, 3)) * (&P_ref) + pose.slice((0, 3), (3, 1));
 
-        let mut min_f_ref = (&f_ref * d_min).to_homogeneous();
-        min_f_ref[3] = 1.;
-        let mut max_f_ref = (&f_ref * d_max).to_homogeneous();
-        max_f_ref[3] = 1.;
-        let min_f_ref_rt = &pose * min_f_ref;
-        let max_f_ref_rt = &pose * max_f_ref;
+        let P_ref_rt = &pose * &P_ref;
+        let px_mean_curr = cam2px(
+            &vector![P_ref_rt[0], P_ref_rt[1], P_ref_rt[2]],
+            &self.camera,
+        );
+
+        let min_f_ref_rt = &pose * min_P_ref;
+        let max_f_ref_rt = &pose * max_P_ref;
 
         let px_min_curr = cam2px(
             &vector![min_f_ref_rt[0], min_f_ref_rt[1], min_f_ref_rt[2]],
@@ -167,8 +169,8 @@ impl<'a> DepthFilter<'a> {
         let epipolar_direction = epipolar_line.normalize();
         let mut half_length = 0.5 * epipolar_line.norm();
 
-        if half_length > 100. {
-            half_length = 100.;
+        if half_length > 300. {
+            half_length = 300.;
         }
         let mut best_ncc = -1.;
         let mut best_px_curr = vector![0., 0.];
