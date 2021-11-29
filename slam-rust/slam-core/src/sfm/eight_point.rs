@@ -137,9 +137,10 @@ impl<'a> EightPoint<'_> {
 
 #[cfg(test)]
 mod test {
-    use crate::{point::Point2, sfm::EightPoint};
+  
     #[test]
     fn test_nomalize_find_fundamental() {
+        use crate::{point::Point2, sfm::EightPoint};
         let points1: Vec<(f64, f64)> = vec![
             (473.000000, 395.000000),
             (278.000000, 301.000000),
@@ -227,5 +228,69 @@ mod test {
         println!("normalize fundamental matrix {:?}", fundamental);
         let fundamental = ep.find_fundamental();
         println!("fundamental matrix {:?}", fundamental);
+    }
+
+    #[test]
+    fn randomized_test() {
+      use nalgebra::{Const, IsometryMatrix3, Matrix3, OPoint, Point2, Point3, Rotation3, Vector2, Vector3, matrix};
+      const SAMPLE_POINTS: usize = 16;
+      const RESIDUAL_THRESHOLD: f64 = 1e-4;  
+      const ROT_MAGNITUDE: f64 = 0.2;
+      const POINT_BOX_SIZE: f64 = 2.0;
+      const POINT_DISTANCE: f64 = 3.0;
+        fn some_test_data() {
+            let camera = Matrix3::new(520.9, 0., 320., 0., 521.0, 320.1, 0., 0., 1.);
+            let relative_pose = IsometryMatrix3::from_parts(
+                Vector3::new_random().into(),
+                Rotation3::new(Vector3::new_random() * std::f64::consts::PI * 2.0 * ROT_MAGNITUDE),
+            );
+            println!("relative_post {:?}", &relative_pose);
+            let a_points: Vec<Point3<f64>> = (0..SAMPLE_POINTS)
+                .map(|_| {
+                    let mut a: Point3<f64> = Point3::from(Vector3::new_random() * POINT_BOX_SIZE);
+                    a.x -= 0.5 * POINT_BOX_SIZE;
+                    a.y -= 0.5 * POINT_BOX_SIZE;
+                    a.z += POINT_DISTANCE;
+                    // camera * &a
+                    a
+                })
+                .collect();
+
+            let b_points: Vec<Point3<f64>> = a_points
+                .clone()
+                .iter()
+                .map(|ap| relative_pose * ap)
+                .collect();
+            println!("a points {:?}", a_points);
+            println!("b points {:?}", b_points);
+            let camera2px = |point: &Point3<f64>, camera: &Matrix3<f64>| -> Point2<f64> {
+                let cx = camera[(0, 2)];
+                let cy = camera[(1, 2)];
+                let fx = camera[(0, 0)];
+                let fy = camera[(1, 1)];
+                Point2::from(Vector2::new(
+                    point.x * fx / point.z + cx,
+                    point.y * fy / point.z + cy,
+                ))
+            };
+            let kps_a: Vec<Point2<f64>> = a_points
+                .clone()
+                .iter()
+                .map(|a| camera2px(a, &camera))
+                .collect();
+            let kps_b: Vec<Point2<f64>> = b_points
+                .clone()
+                .iter()
+                .map(|b| camera2px(b, &camera))
+                .collect();
+            println!("kps_a {:?}", &kps_a);
+            println!("kps_b {:?}", &kps_b);
+        }
+        fn run_round() -> bool {
+            some_test_data();
+            todo!()
+        }
+        let successes = (0..1000).filter(|_| run_round()).count();
+        assert!(successes > 950)
     }
 }

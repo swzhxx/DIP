@@ -33,11 +33,11 @@ where
         .singular_values
         .iter()
         .enumerate()
-        .map(|(idx, &v)| (v, idx))
+        .map(|(idx, v)| (v, idx))
         .collect();
     s.sort_by(|a, b| b.0.partial_cmp(&a.0).unwrap());
     let order: Vec<usize> = s.iter().map(|t| t.1).collect();
-    let single_values: Vec<_> = s.iter().map(|t| t.0).collect();
+    let single_values: Vec<_> = s.iter().map(|t| t.0.clone()).collect();
 
     let u_clone = svd.u.as_ref().unwrap().clone();
     let v_t_clone = svd.v_t.as_ref().unwrap().clone();
@@ -47,7 +47,7 @@ where
         u_ref.set_column(*i, &u_clone.column(*i));
         v_t_ref.set_row(*i, &v_t_clone.row(*i));
         // svd.singular_values.set_row(single_values);
-        let single_value = single_values[*i];
+        let single_value = single_values[*i].clone();
         svd.singular_values[*i] = single_value;
     }
 }

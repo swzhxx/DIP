@@ -129,8 +129,8 @@ impl Recover3D {
             for x in 0..shape[1] {
                 let depth = depths[[y, x]];
                 // let color = ref_image[[y, x]];
-                point_cloud.push(x as f64 * depth);
-                point_cloud.push(y as f64 * depth);
+                point_cloud.push(x as f64 );
+                point_cloud.push(y as f64 );
                 point_cloud.push(depth);
                 // point_cloud.push(color);
             }

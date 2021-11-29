@@ -214,7 +214,7 @@ impl<'a> DepthFilter<'a> {
         pose: &Array2<f64>,
         epipolar_direction: &Vector2<f64>,
     ) {
-        println!("pose {:?}", pose);
+        // println!("pose {:?}", pose);
         // let pose = pose.view().into_nalgebra();
         let f_ref = px2cam(pt_ref, &self.camera);
         let f_ref = f_ref.normalize();
@@ -334,8 +334,8 @@ mod test {
         let images = vec![image_1_nd, image_2_nd];
         let mut i = RefCell::new(0);
 
-        // let ref_features = OFast::new(&images[0]).find_features(None);
-        // let ref_descriptors = Orb::new(&images[0], &ref_features).create_descriptors();
+        let ref_features = OFast::new(&images[0]).find_features(None);
+        let ref_descriptors = Orb::new(&images[0], &ref_features).create_descriptors();
         let reader: Box<dyn for<'a> Fn(&'a Vec<Array2<f64>>) -> ReaderResult<'a>> =
             Box::new(move |images| {
                 let _i = *i.borrow();
@@ -345,42 +345,44 @@ mod test {
                 let ref_image = &images[0];
                 let curr_image = &images[1];
 
-                // let curr_features = OFast::new(curr_image).find_features(None);
-                // let curr_descriptors = Orb::new(curr_image, &curr_features).create_descriptors();
-                // let mut matches = Orb::brief_match(&ref_descriptors, &curr_descriptors, 40);
-                // let matches1 = matches
-                //     .iter()
-                //     .map(|dmatch| ref_features[dmatch.i1].clone().f())
-                //     .collect();
-                // let matches2 = matches
-                //     .iter()
-                //     .map(|dmatch| curr_features[dmatch.i2].clone().f())
-                //     .collect();
-                // let fundamental =
-                //     EightPoint::new(&matches1, &matches2).normalize_find_fundamental();
-                // if fundamental == None {
-                //     *i.borrow_mut() = _i + 1;
-                //     return (None, None, None);
-                // }
+                let curr_features = OFast::new(curr_image).find_features(None);
+                let curr_descriptors = Orb::new(curr_image, &curr_features).create_descriptors();
+                let mut matches = Orb::brief_match(&ref_descriptors, &curr_descriptors, 40);
+                let matches1 = matches
+                    .iter()
+                    .map(|dmatch| ref_features[dmatch.i1].clone().f())
+                    .collect();
+                let matches2 = matches
+                    .iter()
+                    .map(|dmatch| curr_features[dmatch.i2].clone().f())
+                    .collect();
+                let fundamental =
+                    EightPoint::new(&matches1, &matches2).normalize_find_fundamental();
+                if fundamental == None {
+                    *i.borrow_mut() = _i + 1;
+                    return (None, None, None);
+                }
 
-                let fundamental = array![
-                    [
-                        -0.000000000872403124614239,
-                        -0.0000000041118031630738915,
-                        0.0000011439246009686824
-                    ],
-                    [
-                        0.000000004138277117787244,
-                        -0.00000000025029909169952103,
-                        -0.0000011347366093557734
-                    ],
-                    [
-                        -0.0000007055956090073091,
-                        0.0000011968556493131393,
-                        -0.000057254767381884956
-                    ]
-                ];
-                let (mut a, b) = find_pose(&fundamental);
+                // let fundamental = array![
+                //     [
+                //         -0.000000000872403124614239,
+                //         -0.0000000041118031630738915,
+                //         0.0000011439246009686824
+                //     ],
+                //     [
+                //         0.000000004138277117787244,
+                //         -0.00000000025029909169952103,
+                //         -0.0000011347366093557734
+                //     ],
+                //     [
+                //         -0.0000007055956090073091,
+                //         0.0000011968556493131393,
+                //         -0.000057254767381884956
+                //     ]
+                // ];
+                let (mut a, b) = find_pose(&fundamental.unwrap());
+                println!("a {:?}", a);
+                println!("b {:?}", b);
                 let b = array![b[[2, 1]], b[[0, 2]], b[[1, 0]]];
                 // let m = b.dot(&a);
                 // let m = m.into_shape((m.len())).unwrap();

@@ -48,6 +48,7 @@ export default (): JSX.Element => {
 
     let recover = new Slam.Recover3D(images)
     let points = recover.recover_3d_point()
+    let depths = recover.get_normalize_depth()
     console.log(`points`, points)
     const el = canvas3dEl.current
     if (!el) {
@@ -85,8 +86,12 @@ export default (): JSX.Element => {
         let x = points[i * 3]
         let y = refImage.height - points[i * 3 + 1]
         let z = points[i * 3 + 2]
-        particle.position = new Vector3(x, y, z)
+        particle.position = new Vector3(x, y, depths[i])
         particle.color = new Color4(
+          // depths[i] / 255,
+          // depths[i] / 255,
+          // depths[i] / 255,
+
           refImage.data[i * 4] / 255,
           refImage.data[i * 4 + 1] / 255,
           refImage.data[i * 4 + 2] / 255,
