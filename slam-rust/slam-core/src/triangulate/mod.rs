@@ -1,9 +1,13 @@
 use std::convert::{TryFrom, TryInto};
 
+use nalgebra::{DMatrix, DimName, Isometry3, IsometryMatrix3, Matrix4, RowVector4, Vector3};
 use ndarray::{array, s, Array2, Axis};
 use nshare::{ToNalgebra, ToNdarray1, ToNdarray2};
 
-use crate::point::{Point, Point3};
+use crate::{
+    point::{Point, Point3},
+    svd::compute_min_vt_eigen_vector,
+};
 
 pub type TransformPoint = Vec<(Point3<f64>, Array2<f64>, Point3<f64>)>;
 
@@ -67,5 +71,61 @@ impl<'a> Triangulate<'_> {
         let x = svd.v_t.unwrap();
         let x: Point3<f64> = x.column(2).into_ndarray1().to_owned().try_into().unwrap();
         x
+    }
+}
+
+#[derive(Copy, Clone, Debug, PartialEq, PartialOrd)]
+pub struct RelativeDltTriangulator {
+    epsilon: f64,
+    max_iterations: usize,
+}
+
+impl RelativeDltTriangulator {
+    pub fn new() -> Self {
+        Default::default()
+    }
+    pub fn epsilon(self, epsilon: f64) -> Self {
+        Self { epsilon, ..self }
+    }
+    pub fn max_iterations(self, max_iterations: usize) -> Self {
+        Self {
+            max_iterations,
+            ..self
+        }
+    }
+}
+impl Default for RelativeDltTriangulator {
+    fn default() -> Self {
+        Self {
+            epsilon: 1e-12,
+            max_iterations: 1000,
+        }
+    }
+}
+
+impl RelativeDltTriangulator {
+    pub fn triangulate_relative(
+        &self,
+        relative_pose: &IsometryMatrix3<f64>,
+        a: &Vector3<f64>,
+        b: &Vector3<f64>,
+    ) -> Option<Vector3<f64>> {
+        let pose = relative_pose.to_homogeneous();
+        let mut design: DMatrix<f64> = DMatrix::<f64>::zeros(4, 4);
+        design
+            .row_mut(0)
+            .copy_from(&RowVector4::new(-a.z, 0.0, a.x, 0.0));
+        design
+            .row_mut(1)
+            .copy_from(&RowVector4::new(0.0, -a.z, a.y, 0.0));
+        design
+            .row_mut(2)
+            .copy_from(&(b.x * pose.row(2) - b.z * pose.row(0)));
+        design
+            .row_mut(3)
+            .copy_from(&(b.y * pose.row(2) - b.z * pose.row(1)));
+        // let design = DMatrix::cop
+        let x = compute_min_vt_eigen_vector(&design);
+        Some(Vector3::from_vec(x))
     }
 }

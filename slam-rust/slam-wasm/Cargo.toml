@@ -1,6 +1,6 @@
 [package]
 authors = ["swzhxx <549909896@qq.com>"]
-edition = "2018"
+edition = "2021"
 name = "slam-wasm"
 version = "0.1.0"
 

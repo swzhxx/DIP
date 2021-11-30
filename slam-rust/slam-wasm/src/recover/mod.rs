@@ -6,7 +6,7 @@ use slam_core::{
     filter::depth_filter::{DepthFilter, ReaderResult},
     matches::orb::Orb,
     point::{self, Point2, Point3},
-    sfm::{find_pose, restoration_perspective_structure, EightPoint},
+    sfm::{find_pose, EightPoint},
     triangulate::{self, Triangulate},
 };
 use wasm_bindgen::prelude::*;
@@ -129,8 +129,8 @@ impl Recover3D {
             for x in 0..shape[1] {
                 let depth = depths[[y, x]];
                 // let color = ref_image[[y, x]];
-                point_cloud.push(x as f64 );
-                point_cloud.push(y as f64 );
+                point_cloud.push(x as f64);
+                point_cloud.push(y as f64);
                 point_cloud.push(depth);
                 // point_cloud.push(color);
             }
@@ -182,22 +182,23 @@ impl Recover3D {
                     *i.borrow_mut() = _i + 1;
                     return (None, None, None);
                 }
-                web_sys::console::log_1(&format!(" fundamental  {:?}", &fundamental).into());
-                // let pose = restoration_perspective_structure(
-                //     &fundamental.expect("fundamental faild"),
-                //     &matches1,
-                //     &matches2,
-                //     None,
-                // );
-                // web_sys::console::log_1(&format!(" pose1  {:?}", &fundamental).into());
-                let (mut a, b) = find_pose(&fundamental.expect("fundamental faild"));
-                let b = array![b[[2, 1]], b[[0, 2]], b[[1, 0]]];
+                todo!()
+                // web_sys::console::log_1(&format!(" fundamental  {:?}", &fundamental).into());
+                // // let pose = restoration_perspective_structure(
+                // //     &fundamental.expect("fundamental faild"),
+                // //     &matches1,
+                // //     &matches2,
+                // //     None,
+                // // );
+                // // web_sys::console::log_1(&format!(" pose1  {:?}", &fundamental).into());
+                // let (mut a, b) = find_pose(&fundamental.expect("fundamental faild"));
+                // let b = array![b[[2, 1]], b[[0, 2]], b[[1, 0]]];
 
-                a.push_column(b.view());
-                let pose = a;
-                web_sys::console::log_1(&format!(" pose2 {:?}", &pose).into());
-                *i.borrow_mut() = _i + 1;
-                return (Some(ref_image), Some(curr_image), Some(pose));
+                // a.push_column(b.view());
+                // let pose = a;
+                // web_sys::console::log_1(&format!(" pose2 {:?}", &pose).into());
+                // *i.borrow_mut() = _i + 1;
+                // return (Some(ref_image), Some(curr_image), Some(pose));
             });
         let mut depth_filter = DepthFilter::new(
             &self.images,
