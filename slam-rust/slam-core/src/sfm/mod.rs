@@ -3,7 +3,7 @@ use std::rc::Rc;
 
 pub use eight_point::*;
 use nalgebra::{
-    Const, DMatrix, IsometryMatrix3, Matrix1, Matrix3, Rotation3, Storage, Translation,
+    Const, DMatrix, IsometryMatrix3, Matrix1, Matrix3, Matrix3x4, Rotation3, Storage, Translation,
     Translation3, Vector3,
 };
 use ndarray::{array, Array1, Array2};
@@ -65,9 +65,13 @@ pub fn find_pose(
     essential: &Array2<f64>,
     match_points_1: &Vec<Point2<f64>>,
     match_points_2: &Vec<Point2<f64>>,
+    k1: Option<&Matrix3<f64>>,
+    k2: Option<&Matrix3<f64>>,
 ) -> Array2<f64> {
     let (R1, R2, T1, T2) = essential_decomposition(essential);
-
+    let k_identity = Matrix3::identity();
+    let k1 = k1.unwrap_or(&k_identity);
+    let k2 = k2.unwrap_or(&k_identity);
     let vec_poses = vec![(R1, T1), (R2, T2), (R2, T1), (R2, T2)];
     let counts: Vec<usize> = vec_poses
         .iter()
@@ -78,11 +82,17 @@ pub fn find_pose(
                     let p1 = Vector3::new(p1.x, p1.y, 1.);
                     let p2 = Vector3::new(p2.x, p2.y, 1.);
                     let triangulator = RelativeDltTriangulator::new();
+
                     let relative_pose = IsometryMatrix3::from_parts(
                         Translation3::from(T.clone()),
                         Rotation3::from_matrix(R),
-                    );
-                    triangulator.triangulate_relative(&relative_pose, &p1, &p2)
+                    )
+                    .to_homogeneous();
+                    let relative_pose = relative_pose.slice((0, 0), (3, 4));
+                    let pose = k2 * &relative_pose;
+                    let pose = Matrix3x4::from_vec(pose.data.to_owned().as_vec().to_vec());
+                    // let pose = k2.to_owned() * relative_pose.to_homogeneous();
+                    triangulator.triangulate_relative(&pose, &p1, &p2)
                 })
                 .collect();
             world_ps.iter().fold(0usize, |acc, p| {

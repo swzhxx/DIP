@@ -1,6 +1,8 @@
 use std::convert::{TryFrom, TryInto};
 
-use nalgebra::{DMatrix, DimName, Isometry3, IsometryMatrix3, Matrix4, RowVector4, Vector3};
+use nalgebra::{
+    DMatrix, DimName, Isometry3, IsometryMatrix3, Matrix3x4, Matrix4, RowVector4, Vector3,
+};
 use ndarray::{array, s, Array2, Axis};
 use nshare::{ToNalgebra, ToNdarray1, ToNdarray2};
 
@@ -106,11 +108,11 @@ impl Default for RelativeDltTriangulator {
 impl RelativeDltTriangulator {
     pub fn triangulate_relative(
         &self,
-        relative_pose: &IsometryMatrix3<f64>,
+        relative_pose: &Matrix3x4<f64>,
         a: &Vector3<f64>,
         b: &Vector3<f64>,
     ) -> Option<Vector3<f64>> {
-        let pose = relative_pose.to_homogeneous();
+        let pose = relative_pose;
         let mut design: DMatrix<f64> = DMatrix::<f64>::zeros(4, 4);
         design
             .row_mut(0)
