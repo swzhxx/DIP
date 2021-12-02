@@ -3,8 +3,8 @@ use std::rc::Rc;
 
 pub use eight_point::*;
 use nalgebra::{
-    Const, DMatrix, IsometryMatrix3, Matrix1, Matrix3, Matrix3x4, Rotation3, Storage, Translation,
-    Translation3, Vector3,
+    ArrayStorage, Const, DMatrix, IsometryMatrix3, Matrix1, Matrix3, Matrix3x4, Rotation3, Storage,
+    Translation, Translation3, Vector3,
 };
 use ndarray::{array, Array1, Array2};
 use nshare::{RefNdarray1, ToNalgebra, ToNdarray2};
@@ -17,7 +17,7 @@ use crate::{
 };
 use nshare::RefNdarray2;
 //
-pub fn get_fundamental_camera(fundamental: &Array2<f64>) -> Array2<f64> {
+pub fn get_projection_through_fundamental(fundamental: &Array2<f64>) -> Matrix3x4<f64> {
     let f_t = fundamental.t().clone().to_owned().into_nalgebra();
 
     let less_eigen_vector = compute_min_vt_eigen_vector(&f_t);
@@ -30,7 +30,58 @@ pub fn get_fundamental_camera(fundamental: &Array2<f64>) -> Array2<f64> {
     // let a = -&b.dot(fundamental);
     let mut ret = (-1. * &b).dot(fundamental);
     ret.push_column(less_eigen_vector.ref_ndarray1()).unwrap();
-    ret
+    Matrix3x4::from_vec(ret.to_owned().into_raw_vec())
+}
+
+//分解投影矩阵 得到摄像机内参数和外参数
+pub fn projection_decomposition(
+    projection_matrix: &Matrix3x4<f64>,
+) -> (Matrix3<f64>, Matrix3x4<f64>) {
+    let A = projection_matrix.slice((0, 0), (3, 3));
+    let B = projection_matrix.slice((0, 3), (4, 4));
+    let a1 = A.row(0);
+    let a2 = A.row(1);
+    let a3 = A.row(2);
+    let rho = 1. / a3.norm();
+    let u0: f64 = rho.powf(2.) * &a1.dot(&a2);
+    let v0: f64 = rho.powf(2.) * &a2.dot(&a3);
+    let a1_cross_a3 = a1.cross(&a3);
+    let a2_cross_a3 = a2.cross(&a3);
+    let cos_theta = a1_cross_a3.dot(&a2_cross_a3) / (a1_cross_a3.norm() * a2_cross_a3.norm());
+    let theta = cos_theta.acos();
+    let alpha = rho.powf(2.) * a1_cross_a3.norm() * theta.sin();
+    let beta = rho.powf(2.) * a1_cross_a3.norm() * theta.sin();
+
+    let r1 = a2_cross_a3.clone() / a2_cross_a3.norm();
+    let r3 = a3 / a3.norm();
+    let r2 = r1.cross(&r3);
+
+    let k_inner = Matrix3::from_vec(vec![
+        alpha,
+        -alpha * (1. / theta.tan()),
+        u0,
+        0.,
+        beta / theta.sin(),
+        v0,
+        0.,
+        0.,
+        1.,
+    ]);
+    let mut R = Matrix3::from_element(0.);
+    R.row_mut(0).copy_from(&r1);
+    R.row_mut(1).copy_from(&r2);
+    R.row_mut(2).copy_from(&r3);
+    let T = Vector3::from_vec(
+        (low * k_inner.try_inverse().unwrap() * &B)
+            .data
+            .as_vec()
+            .to_vec(),
+    );
+    let k_outer = IsometryMatrix3::from_parts(Translation::from(T), Rotation3::from_matrix(&R));
+    let k_outer = k_outer.to_homogeneous().slice((0, 0), (3, 4)).clone_owned();
+
+    let k_outer = Matrix3x4::from_vec(k_outer.data.as_vec().to_vec());
+    (k_inner, k_outer)
 }
 
 // 本质矩阵的分解
@@ -61,17 +112,17 @@ pub fn essential_decomposition(
     (R1, R2, T1, T2)
 }
 
-pub fn find_pose(
+pub fn find_pose_by_essential(
     essential: &Array2<f64>,
     match_points_1: &Vec<Point2<f64>>,
     match_points_2: &Vec<Point2<f64>>,
-    k1: Option<&Matrix3<f64>>,
-    k2: Option<&Matrix3<f64>>,
+    // k1: Option<&Matrix3<f64>>,
+    // k2: Option<&Matrix3<f64>>,
 ) -> Array2<f64> {
     let (R1, R2, T1, T2) = essential_decomposition(essential);
-    let k_identity = Matrix3::identity();
-    let k1 = k1.unwrap_or(&k_identity);
-    let k2 = k2.unwrap_or(&k_identity);
+    // let k_identity = Matrix3::identity();
+    // let k1 = k1.unwrap_or(&k_identity);
+    // let k2 = k2.unwrap_or(&k_identity);
     let vec_poses = vec![(R1, T1), (R2, T2), (R2, T1), (R2, T2)];
     let counts: Vec<usize> = vec_poses
         .iter()
@@ -88,9 +139,11 @@ pub fn find_pose(
                         Rotation3::from_matrix(R),
                     )
                     .to_homogeneous();
+
                     let relative_pose = relative_pose.slice((0, 0), (3, 4));
-                    let pose = k2 * &relative_pose;
-                    let pose = Matrix3x4::from_vec(pose.data.to_owned().as_vec().to_vec());
+                    // let pose = k2 * &relative_pose;
+                    let pose =
+                        Matrix3x4::from_vec(relative_pose.clone_owned().data.as_vec().to_vec());
                     // let pose = k2.to_owned() * relative_pose.to_homogeneous();
                     triangulator.triangulate_relative(&pose, &p1, &p2)
                 })

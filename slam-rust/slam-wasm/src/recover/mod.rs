@@ -1,12 +1,14 @@
 use std::{borrow::Borrow, cell::RefCell, clone, rc::Rc};
 
+use nalgebra::Matrix3;
 use ndarray::{array, Array2, Axis};
+use nshare::ToNalgebra;
 use slam_core::{
     features::fast::OFast,
     filter::depth_filter::{DepthFilter, ReaderResult},
     matches::orb::Orb,
     point::{self, Point2, Point3},
-    sfm::{find_pose, EightPoint},
+    sfm::{get_projection_through_fundamental, EightPoint},
     triangulate::{self, Triangulate},
 };
 use wasm_bindgen::prelude::*;
@@ -167,6 +169,7 @@ impl Recover3D {
                 let curr_image = &images[_i];
                 let curr_features = OFast::new(curr_image).find_features(None);
                 let curr_descriptors = Orb::new(curr_image, &curr_features).create_descriptors();
+
                 let mut matches = Orb::brief_match(&ref_descriptors, &curr_descriptors, 40);
                 let matches1 = matches
                     .iter()
@@ -182,7 +185,14 @@ impl Recover3D {
                     *i.borrow_mut() = _i + 1;
                     return (None, None, None);
                 }
-                todo!()
+                let fundamental = fundamental.unwrap();
+                let k2 = get_projection_through_fundamental(&fundamental);
+
+                // let esstinal = (&k2.transpose() * &fundamental).ref_ndarray2();
+                // let k2 = Matrix3::from_vec();
+                // let pose = find_pose(&esstinal, &matches1, &matches2, None, Some(&k2));
+
+                todo!();
                 // web_sys::console::log_1(&format!(" fundamental  {:?}", &fundamental).into());
                 // // let pose = restoration_perspective_structure(
                 // //     &fundamental.expect("fundamental faild"),
