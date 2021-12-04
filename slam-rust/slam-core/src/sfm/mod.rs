@@ -3,11 +3,12 @@ use std::rc::Rc;
 
 pub use eight_point::*;
 use nalgebra::{
-    ArrayStorage, Const, DMatrix, IsometryMatrix3, Matrix1, Matrix3, Matrix3x4, Rotation3, Storage,
-    Translation, Translation3, Vector3,
+    ArrayStorage, Const, DMatrix, IsometryMatrix3, Matrix, Matrix1, Matrix3, Matrix3x4, Rotation3,
+    Storage, Translation, Translation3, Vector3,
 };
 use ndarray::{array, Array1, Array2};
 use nshare::{RefNdarray1, ToNalgebra, ToNdarray2};
+use num_traits::Float;
 
 use crate::{
     optimize::LM,
@@ -38,7 +39,7 @@ pub fn projection_decomposition(
     projection_matrix: &Matrix3x4<f64>,
 ) -> (Matrix3<f64>, Matrix3x4<f64>) {
     let A = projection_matrix.slice((0, 0), (3, 3));
-    let B = projection_matrix.slice((0, 3), (4, 4));
+    let B = projection_matrix.slice((0, 3), (3, 1));
     let a1 = A.row(0);
     let a2 = A.row(1);
     let a3 = A.row(2);
@@ -47,38 +48,41 @@ pub fn projection_decomposition(
     let v0: f64 = rho.powf(2.) * &a2.dot(&a3);
     let a1_cross_a3 = a1.cross(&a3);
     let a2_cross_a3 = a2.cross(&a3);
-    let cos_theta = a1_cross_a3.dot(&a2_cross_a3) / (a1_cross_a3.norm() * a2_cross_a3.norm());
-    let theta = cos_theta.acos();
-    let alpha = rho.powf(2.) * a1_cross_a3.norm() * theta.sin();
-    let beta = rho.powf(2.) * a1_cross_a3.norm() * theta.sin();
+    //let cos_theta = -(a1_cross_a3.dot(&a2_cross_a3) / (a1_cross_a3.norm() * a2_cross_a3.norm()));
+    // let cos_theta = 0.;
+    // let theta = cos_theta.acos();
+    // let alpha = rho.powf(2.) * a1_cross_a3.norm() * theta.sin();
+    // let beta = rho.powf(2.) * a1_cross_a3.norm() * theta.sin();
 
+    let alpha = rho.powf(2.) * a1_cross_a3.norm();
+    let beta = rho.powf(2.) * a1_cross_a3.norm();
     let r1 = a2_cross_a3.clone() / a2_cross_a3.norm();
     let r3 = a3 / a3.norm();
     let r2 = r1.cross(&r3);
 
+    // let p1 = -alpha * (1. / theta.tan());
+    // let p2 = beta / theta.sin();
     let k_inner = Matrix3::from_vec(vec![
-        alpha,
-        -alpha * (1. / theta.tan()),
-        u0,
-        0.,
-        beta / theta.sin(),
-        v0,
-        0.,
-        0.,
-        1.,
+        alpha, // if p1.is_nan() { 0. } else { p1 },
+        0., u0, 0., // if p2.is_nan() { beta } else { p2 },
+        beta, v0, 0., 0., 1.,
     ]);
     let mut R = Matrix3::from_element(0.);
     R.row_mut(0).copy_from(&r1);
     R.row_mut(1).copy_from(&r2);
     R.row_mut(2).copy_from(&r3);
     let T = Vector3::from_vec(
-        (low * k_inner.try_inverse().unwrap() * &B)
+        (rho * k_inner.try_inverse().unwrap() * &B)
             .data
             .as_vec()
             .to_vec(),
     );
-    let k_outer = IsometryMatrix3::from_parts(Translation::from(T), Rotation3::from_matrix(&R));
-    let k_outer = k_outer.to_homogeneous().slice((0, 0), (3, 4)).clone_owned();
+    let k_outer = R.clone();
+    let mut k_outer = k_outer.insert_columns(0, 3, 0.);
+    k_outer.column_mut(3).copy_from(&T);
+    // let k_outer =
+    //     IsometryMatrix3::from_parts(Translation3::new(T.x, T.y, T.z), Rotation3::from_matrix(&R));
+    // let k_outer = k_outer.to_homogeneous().slice((0, 0), (3, 4)).clone_owned();
 
     let k_outer = Matrix3x4::from_vec(k_outer.data.as_vec().to_vec());
     (k_inner, k_outer)
@@ -248,20 +252,32 @@ type MatchPoints<T> = Vec<Point2<T>>;
 mod test {
     use ndarray::{array, Array2};
 
+    use crate::sfm::{get_projection_through_fundamental, projection_decomposition};
+
     // use crate::sfm::{find_pose, };
     #[test]
     fn test_find_pose() {
         let shape = [3, 3];
         let fundamental = array![
-            [4.5443750390e-6, 0.000133385576988952, -0.017984992464,],
             [
-                -0.00012756570129598,
-                2.26679480463767e-5,
-                -0.014166784292586,
+                -0.0000000008237234398163901,
+                -0.000000003754458452535314,
+                0.0000010556267400083851
             ],
-            [0.01814994639952877, 0.0041460558715090, 1.,],
+            [
+                0.0000000036789327573697006,
+                -0.00000000031411191699322896,
+                -0.0000010245754071212307
+            ],
+            [
+                -0.0000005952036692728925,
+                0.0000011511285821919004,
+                -0.00007192305867265751
+            ]
         ];
-
-        // println!("pose {:?} ", find_pose(&fundamental));
+        let projection_matrix = get_projection_through_fundamental(&fundamental);
+        println!("projection {:?}", projection_matrix);
+        let (k_inner, pose) = projection_decomposition(&projection_matrix);
+        println!("k_inner {:?} \n pose {:?} ", k_inner, pose);
     }
 }

@@ -300,10 +300,8 @@ mod test {
     use ndarray::{array, Array, Array2};
 
     use crate::{
-        features::fast::OFast,
-        filter::depth_filter::ReaderResult,
-        matches::orb::Orb,
-        sfm::{find_pose, restoration_perspective_structure, EightPoint},
+        features::fast::OFast, filter::depth_filter::ReaderResult, matches::orb::Orb,
+        sfm::EightPoint,
     };
 
     use super::DepthFilter;
@@ -362,7 +360,8 @@ mod test {
                     *i.borrow_mut() = _i + 1;
                     return (None, None, None);
                 }
-
+                println!(" fundamental {:?}", fundamental);
+                todo!()
                 // let fundamental = array![
                 //     [
                 //         -0.000000000872403124614239,
@@ -380,17 +379,18 @@ mod test {
                 //         -0.000057254767381884956
                 //     ]
                 // ];
-                let (mut a, b) = find_pose(&fundamental.unwrap());
-                println!("a {:?}", a);
-                println!("b {:?}", b);
-                let b = array![b[[2, 1]], b[[0, 2]], b[[1, 0]]];
-                // let m = b.dot(&a);
-                // let m = m.into_shape((m.len())).unwrap();
-                a.push_column(b.view());
-                let pose = a;
 
-                *i.borrow_mut() = _i + 1;
-                (Some(ref_image), Some(curr_image), Some(pose))
+                // let (mut a, b) = find_pose(&fundamental.unwrap());
+                // println!("a {:?}", a);
+                // println!("b {:?}", b);
+                // let b = array![b[[2, 1]], b[[0, 2]], b[[1, 0]]];
+                // // let m = b.dot(&a);
+                // // let m = m.into_shape((m.len())).unwrap();
+                // a.push_column(b.view());
+                // let pose = a;
+
+                // *i.borrow_mut() = _i + 1;
+                // (Some(ref_image), Some(curr_image), Some(pose))
             });
         let mut depth_filter = DepthFilter::new(
             &images,

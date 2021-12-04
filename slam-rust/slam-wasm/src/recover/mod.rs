@@ -186,6 +186,7 @@ impl Recover3D {
                     return (None, None, None);
                 }
                 let fundamental = fundamental.unwrap();
+                println!(" fundamental {:?}", fundamental);
                 let k2 = get_projection_through_fundamental(&fundamental);
 
                 // let esstinal = (&k2.transpose() * &fundamental).ref_ndarray2();
