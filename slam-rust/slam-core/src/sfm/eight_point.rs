@@ -61,14 +61,20 @@ impl<'a> EightPoint<'_> {
             }
 
             let f = compute_min_vt_eigen_vector(&w.view().into_nalgebra().clone_owned());
-            println!("f vec{:?}", f);
+
             let f = Array2::from_shape_vec((3, 3), f).unwrap();
             let f = f.into_nalgebra();
 
             let mut f_svd = f.svd(true, true);
+            // println!("f_svd {:?}", f_svd);
             sort_svd(&mut f_svd);
+            // println!("f_svd {:?}", f_svd);
             f_svd.singular_values[2] = 0.;
+
+            // println!("f_svd u {:?}", f_svd.u);
+            // println!("f_svd v_t {:?}", f_svd.v_t);
             let f_bar = f_svd.recompose().unwrap();
+            // let f_bar = f_svd.u.unwrap() * f_svd.singular_values * f_svd.v_t.unwrap();
             let f_bar = f_bar.ref_ndarray2().to_owned();
 
             Some(f_bar)
@@ -111,7 +117,9 @@ impl<'a> EightPoint<'_> {
         let normalize_points2 = build_normalize_points(&points2, &h2);
 
         if let Some(fundmatental) = self.calc_fundamental(&normalize_points1, &normalize_points2) {
-            Some(h2.t().dot(&fundmatental).dot(&h1))
+            let f0 = h2.t().dot(&fundmatental).dot(&h1);
+            // let f0 = 1. / f0[[2, 2]] * f0;
+            Some(f0)
         } else {
             None
         }
@@ -234,6 +242,7 @@ mod test {
     }
 
     #[test]
+
     fn randomized_test() {
         use nalgebra::{
             matrix, Const, IsometryMatrix3, Matrix3, OPoint, Point2, Point3, Rotation3, Vector2,
@@ -265,11 +274,11 @@ mod test {
             let b_points: Vec<Point3<f64>> = a_points
                 .clone()
                 .iter()
-                .map(|ap| relative_pose * ap)
+                .map(|ap| relative_pose.transform_point(&ap))
                 .collect();
             // println!("a points {:?}", a_points);
             // println!("b points {:?}", b_points);
-            let camera2px = |point: &Point3<f64>, camera: &Matrix3<f64>| -> Point2<f64> {
+            let world2px = |point: &Point3<f64>, camera: &Matrix3<f64>| -> Point2<f64> {
                 let cx = camera[(0, 2)];
                 let cy = camera[(1, 2)];
                 let fx = camera[(0, 0)];
@@ -282,12 +291,12 @@ mod test {
             let kps_a: Vec<Point2<f64>> = a_points
                 .clone()
                 .iter()
-                .map(|a| camera2px(a, &camera))
+                .map(|a| world2px(a, &camera))
                 .collect();
             let kps_b: Vec<Point2<f64>> = b_points
                 .clone()
                 .iter()
-                .map(|b| camera2px(b, &camera))
+                .map(|b| world2px(b, &camera))
                 .collect();
             // println!("kps_a {:?}", &kps_a);
             // println!("kps_b {:?}", &kps_b);

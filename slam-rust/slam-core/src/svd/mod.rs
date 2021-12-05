@@ -39,16 +39,20 @@ where
     let order: Vec<usize> = s.iter().map(|t| t.1).collect();
     let single_values: Vec<_> = s.iter().map(|t| t.0.clone()).collect();
 
-    let u_clone = svd.u.as_ref().unwrap().clone();
-    let v_t_clone = svd.v_t.as_ref().unwrap().clone();
-    for i in order.iter() {
-        let u_ref = svd.u.as_mut().unwrap();
-        let v_t_ref = svd.v_t.as_mut().unwrap();
-        u_ref.set_column(*i, &u_clone.column(*i));
-        v_t_ref.set_row(*i, &v_t_clone.row(*i));
+    // let u_clone = svd.u.as_ref().to_owned().unwrap().clone().to_owned();
+    // let v_t_clone = svd.v_t.as_ref().to_owned().unwrap().clone().to_owned();
+    let u_clone = svd.u.as_ref().unwrap().clone_owned();
+    let v_t_clone = svd.v_t.as_ref().unwrap().clone_owned();
+    let u_ref = svd.u.as_mut().unwrap();
+    let v_t_ref = svd.v_t.as_mut().unwrap();
+    for (index, i) in order.iter().enumerate() {
+        // u_ref.set_column(*i, &u_clone.column(*i));
+        // v_t_ref.set_row(*i, &v_t_clone.row(*i));
+        u_ref.column_mut(index).copy_from(&u_clone.column(*i));
+        v_t_ref.row_mut(index).copy_from(&v_t_clone.row(*i));
         // svd.singular_values.set_row(single_values);
-        let single_value = single_values[*i].clone();
-        svd.singular_values[*i] = single_value;
+        let single_value = single_values[index].clone();
+        svd.singular_values[index] = single_value;
     }
 }
 
