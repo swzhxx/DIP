@@ -118,7 +118,7 @@ impl<'a> EightPoint<'_> {
 
         if let Some(fundmatental) = self.calc_fundamental(&normalize_points1, &normalize_points2) {
             let f0 = h2.t().dot(&fundmatental).dot(&h1);
-            // let f0 = 1. / f0[[2, 2]] * f0;
+            let f0 = 1. / f0[[2, 2]] * f0;
             Some(f0)
         } else {
             None

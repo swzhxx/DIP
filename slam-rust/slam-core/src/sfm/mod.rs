@@ -44,7 +44,9 @@ pub fn projection_decomposition(
     let a2 = A.row(1);
     let a3 = A.row(2);
     let rho = 1. / a3.norm();
-    let u0: f64 = rho.powf(2.) * &a1.dot(&a2);
+    // println!("{:?}", &a1.dot(&a3));
+    // println!("{:?}", &a2.dot(&a3));
+    let u0: f64 = rho.powf(2.) * &a1.dot(&a3);
     let v0: f64 = rho.powf(2.) * &a2.dot(&a3);
     let a1_cross_a3 = a1.cross(&a3);
     let a2_cross_a3 = a2.cross(&a3);
@@ -55,7 +57,7 @@ pub fn projection_decomposition(
     // let beta = rho.powf(2.) * a1_cross_a3.norm() * theta.sin();
 
     let alpha = rho.powf(2.) * a1_cross_a3.norm();
-    let beta = rho.powf(2.) * a1_cross_a3.norm();
+    let beta = rho.powf(2.) * a2_cross_a3.norm();
     let r1 = a2_cross_a3.clone() / a2_cross_a3.norm();
     let r3 = a3 / a3.norm();
     let r2 = r1.cross(&r3);
@@ -78,13 +80,13 @@ pub fn projection_decomposition(
             .to_vec(),
     );
     let k_outer = R.clone();
-    let mut k_outer = k_outer.insert_columns(0, 3, 0.);
+    let mut k_outer = k_outer.insert_columns(3, 3, 0.);
     k_outer.column_mut(3).copy_from(&T);
     // let k_outer =
     //     IsometryMatrix3::from_parts(Translation3::new(T.x, T.y, T.z), Rotation3::from_matrix(&R));
     // let k_outer = k_outer.to_homogeneous().slice((0, 0), (3, 4)).clone_owned();
 
-    let k_outer = Matrix3x4::from_vec(k_outer.data.as_vec().to_vec());
+    let k_outer = Matrix3x4::from_vec(k_outer.to_owned().data.as_vec().to_vec());
     (k_inner, k_outer)
 }
 
@@ -250,6 +252,7 @@ type MatchPoints<T> = Vec<Point2<T>>;
 
 #[cfg(test)]
 mod test {
+    use nalgebra::{Matrix3, Matrix3x4};
     use ndarray::{array, Array2};
 
     use crate::sfm::{get_projection_through_fundamental, projection_decomposition};
@@ -260,22 +263,37 @@ mod test {
         let shape = [3, 3];
         let fundamental = array![
             [
-                -0.0000000008237234398163901,
-                -0.000000003754458452535314,
-                0.0000010556267400083851
+                0.00000030289221999405154,
+                0.000005869970528177112,
+                0.011360760530248645
             ],
             [
-                0.0000000036789327573697006,
-                -0.00000000031411191699322896,
-                -0.0000010245754071212307
+                0.000008181615238416967,
+                -0.0000015521808080155693,
+                0.0015044011091202663
             ],
             [
-                -0.0000005952036692728925,
-                0.0000011511285821919004,
-                -0.00007192305867265751
+                -0.014145388104204511,
+                0.003523120361907385,
+                -0.9998280679192365
             ]
         ];
         let projection_matrix = get_projection_through_fundamental(&fundamental);
+        // let projection_matrix = Matrix3x4::from_vec(vec![
+        //     3.53553e2,
+        //     3.39645e2,
+        //     2.77744e2,
+        //     -1.44946e6,
+        //     -1.03528e2,
+        //     2.332122e1,
+        //     4.59607e2,
+        //     -6.32525e5,
+        //     7.07107e-1,
+        //     -3.53553e-1,
+        //     6.12372e-1,
+        //     -9.18559e2,
+        // ]);
+
         println!("projection {:?}", projection_matrix);
         let (k_inner, pose) = projection_decomposition(&projection_matrix);
         println!("k_inner {:?} \n pose {:?} ", k_inner, pose);

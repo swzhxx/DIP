@@ -50,6 +50,7 @@ export default (): JSX.Element => {
     let points = recover.recover_3d_point()
     let depths = recover.get_normalize_depth()
     console.log(`points`, points)
+    console.log(`depths`, depths)
     const el = canvas3dEl.current
     if (!el) {
       return
@@ -86,7 +87,8 @@ export default (): JSX.Element => {
         let x = points[i * 3]
         let y = refImage.height - points[i * 3 + 1]
         let z = points[i * 3 + 2]
-        particle.position = new Vector3(x, y, depths[i])
+        // console.log(`z`)
+        particle.position = new Vector3(x, y, z)
         particle.color = new Color4(
           // depths[i] / 255,
           // depths[i] / 255,
@@ -106,7 +108,7 @@ export default (): JSX.Element => {
         // )
         // particle.color = new Color4(z , z , z , 255)
 
-        console.log(`partical color`, particle.color)
+        // console.log(`partical color`, particle.color)
         //diff between using i and s can be seen by removing comment marker from line 14
         // particle.position = new Vector3(
         //   recoverInfo.points3d[3 * i] * 10000,

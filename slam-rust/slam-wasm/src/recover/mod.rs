@@ -2,7 +2,7 @@ use std::{borrow::Borrow, cell::RefCell, clone, rc::Rc};
 
 use nalgebra::Matrix3;
 use ndarray::{array, Array2, Axis};
-use nshare::ToNalgebra;
+use nshare::{RefNdarray2, ToNalgebra};
 use slam_core::{
     features::fast::OFast,
     filter::depth_filter::{DepthFilter, ReaderResult},
@@ -186,15 +186,13 @@ impl Recover3D {
                     return (None, None, None);
                 }
                 let fundamental = fundamental.unwrap();
-                println!(" fundamental {:?}", fundamental);
-                let k2 = get_projection_through_fundamental(&fundamental);
 
-                // let esstinal = (&k2.transpose() * &fundamental).ref_ndarray2();
-                // let k2 = Matrix3::from_vec();
-                // let pose = find_pose(&esstinal, &matches1, &matches2, None, Some(&k2));
-
-                todo!();
-                // web_sys::console::log_1(&format!(" fundamental  {:?}", &fundamental).into());
+                // println!(" fundamental {:?}", fundamental);
+                let projection = get_projection_through_fundamental(&fundamental);
+                println!("projection {:?}", projection);
+                let projection = projection.ref_ndarray2().to_owned();
+                *i.borrow_mut() = _i + 1;
+                (Some(ref_image), Some(curr_image), Some(projection))
                 // // let pose = restoration_perspective_structure(
                 // //     &fundamental.expect("fundamental faild"),
                 // //     &matches1,

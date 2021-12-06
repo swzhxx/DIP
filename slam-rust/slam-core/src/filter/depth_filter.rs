@@ -2,7 +2,7 @@ use std::{f64::consts::PI, marker::PhantomData, thread::current};
 
 use nalgebra::{
     matrix, vector, AbstractRotation, Const, DMatrix, Dynamic, Matrix2, Matrix3, MatrixXx3,
-    Vector2, Vector3,
+    Vector2, Vector3, Vector4,
 };
 use ndarray::{array, s, Array, Array1, Array2, ArrayBase, Axis, OwnedRepr};
 use nshare::ToNalgebra;
@@ -37,11 +37,11 @@ impl<'a> DepthFilter<'a> {
     ) -> Self {
         let depth_mean = match depth_mean {
             Some(val) => val,
-            _ => 3.,
+            _ => 10.,
         };
         let depth_cov = match depth_cov {
             Some(val) => val,
-            _ => 3.,
+            _ => 50.,
         };
         let min_depth = match min_depth {
             Some(val) => val,
@@ -49,7 +49,7 @@ impl<'a> DepthFilter<'a> {
         };
         let max_depth = match max_depth {
             Some(val) => val,
-            _ => 10.,
+            _ => 100.,
         };
         DepthFilter {
             images,
@@ -72,13 +72,13 @@ impl<'a> DepthFilter<'a> {
     }
 
     pub fn excute(&mut self) {
-        let (ref_image, option_image, option_pose) = self.reader();
+        let (ref_image, option_image, option_projection) = self.reader();
 
-        if ref_image != None && option_image != None && option_pose != None {
+        if ref_image != None && option_image != None && option_projection != None {
             self.update(
                 ref_image.unwrap(),
                 option_image.unwrap(),
-                &option_pose.unwrap(),
+                &option_projection.unwrap(),
             );
             self.excute();
         }
@@ -89,12 +89,13 @@ impl<'a> DepthFilter<'a> {
         &mut self,
         ref_image: &Array2<f64>,
         current_image: &Array2<f64>,
-        pose: &Array2<f64>,
+        projection: &Array2<f64>,
     ) {
-        let mut pose = pose.clone().to_owned();
-        pose.push(Axis(0), array![0., 0., 0., 1.].view())
-            .expect(&format!("pose {:?}", pose));
-        println!("pose {:?}", pose);
+        let mut projection = projection.clone().to_owned();
+        projection
+            .push(Axis(0), array![0., 0., 0., 1.].view())
+            .expect(&format!("projection {:?}", projection));
+
         for y in border..(self.height - border) {
             for x in border..(self.width - border) {
                 if self.depth_cov2_matrix[[y, x]] < self.min_depth
@@ -105,14 +106,19 @@ impl<'a> DepthFilter<'a> {
                 let pt_ref = array![x as f64, y as f64];
                 let depth = self.depth_matrix[[y, x]];
                 let depth_cov = self.depth_cov2_matrix[[y, x]];
-                if let Some((pt_curr, epiploar_direction)) =
-                    self.epipolar_search(&pt_ref, ref_image, current_image, &pose, depth, depth_cov)
-                {
+                if let Some((pt_curr, epiploar_direction)) = self.epipolar_search(
+                    &pt_ref,
+                    ref_image,
+                    current_image,
+                    &projection,
+                    depth,
+                    depth_cov,
+                ) {
                     // TODO: 更新深度图
                     self.update_depth_filter(
                         &vector![x as f64, y as f64],
                         &pt_curr,
-                        &pose,
+                        &projection,
                         &epiploar_direction,
                     );
                 }
@@ -127,13 +133,13 @@ impl<'a> DepthFilter<'a> {
         pt_ref: &Array1<f64>,
         ref_image: &Array2<f64>,
         current_image: &Array2<f64>,
-        pose: &Array2<f64>,
+        projection: &Array2<f64>,
         depth: f64,
         depth_cov: f64,
     ) -> Option<(Vector2<f64>, Vector2<f64>)> {
-        let pose = pose.clone().into_nalgebra();
+        let projection = projection.clone().into_nalgebra();
 
-        let f_ref = px2cam(&vector![pt_ref[0], pt_ref[1]], &self.camera).normalize();
+        let f_ref = vector![pt_ref[0], pt_ref[1], 1.].normalize();
 
         let mut P_ref = (f_ref * depth).to_homogeneous();
         P_ref[3] = 1.;
@@ -146,25 +152,21 @@ impl<'a> DepthFilter<'a> {
         min_P_ref[3] = 1.;
         let mut max_P_ref = (&f_ref * d_max).to_homogeneous();
         max_P_ref[3] = 1.;
-        // let P_ref = pose.slice((0, 0), (3, 3)) * (&P_ref) + pose.slice((0, 3), (3, 1));
 
-        let P_ref_rt = &pose * &P_ref;
-        let px_mean_curr = cam2px(
-            &vector![P_ref_rt[0], P_ref_rt[1], P_ref_rt[2]],
-            &self.camera,
-        );
+        let P_ref_rt = P_ref.clone_owned();
+        let px_mean_curr = cam2px(&P_ref_rt.xyz(), &self.camera);
 
-        let min_f_ref_rt = &pose * min_P_ref;
-        let max_f_ref_rt = &pose * max_P_ref;
+        let px_min_curr = Vector4::from_vec((&projection * min_P_ref).data.as_vec().to_vec()).xy();
+        let px_max_curr = Vector4::from_vec((&projection * max_P_ref).data.as_vec().to_vec()).xy();
 
-        let px_min_curr = cam2px(
-            &vector![min_f_ref_rt[0], min_f_ref_rt[1], min_f_ref_rt[2]],
-            &self.camera,
-        );
-        let px_max_curr = cam2px(
-            &vector![max_f_ref_rt[0], max_f_ref_rt[1], max_f_ref_rt[2]],
-            &self.camera,
-        );
+        // let px_min_curr = cam2px(
+        //     &vector![min_f_ref_rt[0], min_f_ref_rt[1], min_f_ref_rt[2]],
+        //     &self.camera,
+        // );
+        // let px_max_curr = cam2px(
+        //     &vector![max_f_ref_rt[0], max_f_ref_rt[1], max_f_ref_rt[2]],
+        //     &self.camera,
+        // );
         let epipolar_line = px_max_curr - px_min_curr;
         let epipolar_direction = epipolar_line.normalize();
         let mut half_length = 0.5 * epipolar_line.norm();
@@ -198,7 +200,7 @@ impl<'a> DepthFilter<'a> {
             }
             l = l + 0.7;
         }
-        if best_ncc < 0.6 {
+        if best_ncc < 0.7 {
             None
         } else {
             Some((best_px_curr, epipolar_direction))
@@ -211,19 +213,18 @@ impl<'a> DepthFilter<'a> {
         &mut self,
         pt_ref: &Vector2<f64>,
         pt_curr: &Vector2<f64>,
-        pose: &Array2<f64>,
+        projection: &Array2<f64>,
         epipolar_direction: &Vector2<f64>,
     ) {
-        // println!("pose {:?}", pose);
-        // let pose = pose.view().into_nalgebra();
-        let f_ref = px2cam(pt_ref, &self.camera);
-        let f_ref = f_ref.normalize();
-        let f_curr = px2cam(pt_curr, &self.camera);
+        let projection = projection.clone().into_nalgebra();
+        // let f_ref = pt_ref.to_homogeneous();
+        let f_ref = pt_ref.to_homogeneous().normalize();
+        let f_curr = pt_curr.to_homogeneous();
         let f_curr = f_curr.normalize();
 
-        let R = pose.slice(s![0..3, 0..3]).to_owned();
-        let R: DMatrix<f64> = R.into_nalgebra().try_inverse().unwrap();
-        let t = vector![pose[[0, 3]], pose[[1, 3]], pose[[2, 3]]];
+        let R = projection.slice((0, 0), (3, 3));
+        let R: DMatrix<f64> = R.try_inverse().unwrap();
+        let t = vector![projection[(0, 3)], projection[(1, 3)], projection[(2, 3)]];
 
         let f2 = R * f_curr;
         let b = vector![f_ref.dot(&t), t.dot(&f2)];
@@ -249,7 +250,9 @@ impl<'a> DepthFilter<'a> {
         let a_norm = a.norm();
         let alpha = (f_ref.dot(&t) / t_norm).acos();
         // let beta = (-a.dot(&t) / (a_norm * t_norm)).acos();
-        let f_curr_prim = px2cam(&(pt_curr + epipolar_direction), &self.camera);
+
+        let f_curr_prim = (pt_curr + epipolar_direction).to_homogeneous();
+
         let f_curr_prim = f_curr_prim.normalize();
         let beta_prim = f_curr_prim.dot(&-t) / t_norm;
         let gamma = PI - alpha - beta_prim;
@@ -275,7 +278,7 @@ impl<'a> DepthFilter<'a> {
     }
 }
 
-/// 0：ref图像数据 1.curr图像数据 ， 2.pose矩阵
+/// 0：ref图像数据 1.curr图像数据 ， 2.projection矩阵
 pub type ReaderResult<'b> = (
     Option<&'b Array2<f64>>,
     Option<&'b Array2<f64>>,
@@ -298,10 +301,13 @@ mod test {
 
     use image::{self, DynamicImage, GenericImageView};
     use ndarray::{array, Array, Array2};
+    use nshare::RefNdarray2;
 
     use crate::{
-        features::fast::OFast, filter::depth_filter::ReaderResult, matches::orb::Orb,
-        sfm::EightPoint,
+        features::fast::OFast,
+        filter::depth_filter::ReaderResult,
+        matches::orb::Orb,
+        sfm::{get_projection_through_fundamental, EightPoint},
     };
 
     use super::DepthFilter;
@@ -332,8 +338,8 @@ mod test {
         let images = vec![image_1_nd, image_2_nd];
         let mut i = RefCell::new(0);
 
-        let ref_features = OFast::new(&images[0]).find_features(None);
-        let ref_descriptors = Orb::new(&images[0], &ref_features).create_descriptors();
+        // let ref_features = OFast::new(&images[0]).find_features(None);
+        // let ref_descriptors = Orb::new(&images[0], &ref_features).create_descriptors();
         let reader: Box<dyn for<'a> Fn(&'a Vec<Array2<f64>>) -> ReaderResult<'a>> =
             Box::new(move |images| {
                 let _i = *i.borrow();
@@ -343,54 +349,29 @@ mod test {
                 let ref_image = &images[0];
                 let curr_image = &images[1];
 
-                let curr_features = OFast::new(curr_image).find_features(None);
-                let curr_descriptors = Orb::new(curr_image, &curr_features).create_descriptors();
-                let mut matches = Orb::brief_match(&ref_descriptors, &curr_descriptors, 40);
-                let matches1 = matches
-                    .iter()
-                    .map(|dmatch| ref_features[dmatch.i1].clone().f())
-                    .collect();
-                let matches2 = matches
-                    .iter()
-                    .map(|dmatch| curr_features[dmatch.i2].clone().f())
-                    .collect();
-                let fundamental =
-                    EightPoint::new(&matches1, &matches2).normalize_find_fundamental();
-                if fundamental == None {
-                    *i.borrow_mut() = _i + 1;
-                    return (None, None, None);
-                }
-                println!(" fundamental {:?}", fundamental);
-                todo!()
-                // let fundamental = array![
-                //     [
-                //         -0.000000000872403124614239,
-                //         -0.0000000041118031630738915,
-                //         0.0000011439246009686824
-                //     ],
-                //     [
-                //         0.000000004138277117787244,
-                //         -0.00000000025029909169952103,
-                //         -0.0000011347366093557734
-                //     ],
-                //     [
-                //         -0.0000007055956090073091,
-                //         0.0000011968556493131393,
-                //         -0.000057254767381884956
-                //     ]
-                // ];
+                let fundamental = array![
+                    [
+                        0.000005959949965227293,
+                        0.00009854717317892966,
+                        -0.02312085601749234
+                    ],
+                    [
+                        -0.00009791672201580511,
+                        0.00002077848996239076,
+                        0.023621935900711325
+                    ],
+                    [
+                        0.02076431274228595,
+                        -0.03206841094595729,
+                        0.9999999999999999
+                    ]
+                ];
 
-                // let (mut a, b) = find_pose(&fundamental.unwrap());
-                // println!("a {:?}", a);
-                // println!("b {:?}", b);
-                // let b = array![b[[2, 1]], b[[0, 2]], b[[1, 0]]];
-                // // let m = b.dot(&a);
-                // // let m = m.into_shape((m.len())).unwrap();
-                // a.push_column(b.view());
-                // let pose = a;
-
-                // *i.borrow_mut() = _i + 1;
-                // (Some(ref_image), Some(curr_image), Some(pose))
+                let projection = get_projection_through_fundamental(&fundamental);
+                println!(" projection {:?}", projection);
+                let projection = projection.ref_ndarray2().to_owned();
+                *i.borrow_mut() = _i + 1;
+                (Some(ref_image), Some(curr_image), Some(projection))
             });
         let mut depth_filter = DepthFilter::new(
             &images,
