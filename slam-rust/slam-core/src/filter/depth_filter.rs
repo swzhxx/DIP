@@ -1,13 +1,18 @@
 use std::{f64::consts::PI, marker::PhantomData, thread::current};
 
+use image::imageops::FilterType::Triangle;
 use nalgebra::{
-    matrix, vector, AbstractRotation, Const, DMatrix, Dynamic, Matrix2, Matrix3, MatrixXx3,
-    Vector2, Vector3, Vector4,
+    matrix, vector, AbstractRotation, Const, DMatrix, Dynamic, Matrix2, Matrix3, Matrix3x2,
+    Matrix3x4, MatrixXx3, Vector2, Vector3, Vector4,
 };
 use ndarray::{array, s, Array, Array1, Array2, ArrayBase, Axis, OwnedRepr};
 use nshare::ToNalgebra;
 
-use crate::utils::{cam2px, ncc, px2cam};
+use crate::{
+    point::Point3,
+    triangulate::{self, RelativeDltTriangulator, Triangulate},
+    utils::{cam2px, ncc, px2cam},
+};
 const border: usize = 20;
 
 pub struct DepthFilter<'a> {
@@ -37,11 +42,11 @@ impl<'a> DepthFilter<'a> {
     ) -> Self {
         let depth_mean = match depth_mean {
             Some(val) => val,
-            _ => 10.,
+            _ => 3.,
         };
         let depth_cov = match depth_cov {
             Some(val) => val,
-            _ => 50.,
+            _ => 20.,
         };
         let min_depth = match min_depth {
             Some(val) => val,
@@ -49,7 +54,7 @@ impl<'a> DepthFilter<'a> {
         };
         let max_depth = match max_depth {
             Some(val) => val,
-            _ => 100.,
+            _ => 40.,
         };
         DepthFilter {
             images,
@@ -95,6 +100,7 @@ impl<'a> DepthFilter<'a> {
         projection
             .push(Axis(0), array![0., 0., 0., 1.].view())
             .expect(&format!("projection {:?}", projection));
+        let mut update_count = 0;
 
         for y in border..(self.height - border) {
             for x in border..(self.width - border) {
@@ -121,9 +127,23 @@ impl<'a> DepthFilter<'a> {
                         &projection,
                         &epiploar_direction,
                     );
+
+                    // let mut ref_data = pt_ref.to_owned().into_raw_vec();
+                    // // ref_data.push(1.);
+                    // let pt_ref = Vector2::from_vec(ref_data);
+                    // // let pt_curr = pt_curr;
+                    // let projection = Matrix3x4::from_vec(projection.to_owned().into_raw_vec());
+                    // let P = triangulate
+                    //     .triangulate_relative(&projection, &pt_ref, &pt_curr)
+                    //     .unwrap();
+                    update_count = update_count + 1;
+                    if update_count % 100 == 0 {
+                        println!("update count ing {:?}", update_count);
+                    }
                 }
             }
         }
+        println!("update count {:?}", update_count);
     }
 
     /// 极线搜索
@@ -141,7 +161,7 @@ impl<'a> DepthFilter<'a> {
 
         let f_ref = vector![pt_ref[0], pt_ref[1], 1.].normalize();
 
-        let mut P_ref = (f_ref * depth).to_homogeneous();
+        let mut P_ref = (&f_ref * depth).to_homogeneous();
         P_ref[3] = 1.;
         let mut d_min = depth - 3. * depth_cov;
         let d_max = depth + 3. * depth_cov;
@@ -155,9 +175,10 @@ impl<'a> DepthFilter<'a> {
 
         let P_ref_rt = P_ref.clone_owned();
         let px_mean_curr = cam2px(&P_ref_rt.xyz(), &self.camera);
-
-        let px_min_curr = Vector4::from_vec((&projection * min_P_ref).data.as_vec().to_vec()).xy();
-        let px_max_curr = Vector4::from_vec((&projection * max_P_ref).data.as_vec().to_vec()).xy();
+        let min_p_curr = Vector4::from_vec((&projection * min_P_ref).data.as_vec().to_vec());
+        let px_min_curr = (min_p_curr / min_p_curr.z).xy();
+        let max_p_curr = Vector4::from_vec((&projection * max_P_ref).data.as_vec().to_vec());
+        let px_max_curr = (max_p_curr / max_p_curr.z).xy();
 
         // let px_min_curr = cam2px(
         //     &vector![min_f_ref_rt[0], min_f_ref_rt[1], min_f_ref_rt[2]],
@@ -171,8 +192,8 @@ impl<'a> DepthFilter<'a> {
         let epipolar_direction = epipolar_line.normalize();
         let mut half_length = 0.5 * epipolar_line.norm();
 
-        if half_length > 300. {
-            half_length = 300.;
+        if half_length > 100. {
+            half_length = 100.;
         }
         let mut best_ncc = -1.;
         let mut best_px_curr = vector![0., 0.];
@@ -200,7 +221,7 @@ impl<'a> DepthFilter<'a> {
             }
             l = l + 0.7;
         }
-        if best_ncc < 0.7 {
+        if best_ncc < 0.8 {
             None
         } else {
             Some((best_px_curr, epipolar_direction))
@@ -272,9 +293,20 @@ impl<'a> DepthFilter<'a> {
 
         let mu_fuse = d_cov2 * mu + sigma2 * dept_estimation;
         let sigma_fuse2 = (sigma2 * d_cov2) / (sigma2 + d_cov2);
-        println!("mu_fuse {:?}", mu_fuse);
+        // println!("mu_fuse {:?}", mu_fuse);
         self.depth_matrix[(pt_ref.y as usize, pt_ref.x as usize)] = mu_fuse;
         self.depth_cov2_matrix[(pt_ref.y as usize, pt_ref.x as usize)] = sigma_fuse2;
+    }
+    fn update_depth_rlt(pt_ref: &Array2<f64>, projection: &Array2<f64>, pt_curr: &Vector2<f64>) {
+        let triangulate = RelativeDltTriangulator::new();
+        let mut ref_data = pt_ref.to_owned().into_raw_vec();
+        // ref_data.push(1.);
+        let pt_ref = Vector2::from_vec(ref_data);
+        // let pt_curr = pt_curr;
+        let projection = Matrix3x4::from_vec(projection.to_owned().into_raw_vec());
+        let P = triangulate
+            .triangulate_relative(&projection, &pt_ref, &pt_curr)
+            .unwrap();
     }
 }
 

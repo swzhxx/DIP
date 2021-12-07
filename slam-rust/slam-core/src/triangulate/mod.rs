@@ -1,7 +1,8 @@
 use std::convert::{TryFrom, TryInto};
 
 use nalgebra::{
-    DMatrix, DimName, Isometry3, IsometryMatrix3, Matrix3x4, Matrix4, RowVector4, Vector3,
+    DMatrix, DimName, Isometry3, IsometryMatrix3, Matrix3x4, Matrix4, RowVector4, Vector2, Vector3,
+    Vector4,
 };
 use ndarray::{array, s, Array2, Axis};
 use nshare::{ToNalgebra, ToNdarray1, ToNdarray2};
@@ -13,25 +14,25 @@ use crate::{
 
 pub type TransformPoint = Vec<(Point3<f64>, Array2<f64>, Point3<f64>)>;
 
-pub struct Triangulate<'a> {
-    pairs: &'a TransformPoint,
+pub struct Triangulate {
+    // pairs: &'a TransformPoint,
 }
 
-impl<'a> Triangulate<'_> {
-    pub fn new(pairs: &'a TransformPoint) -> Triangulate {
-        Triangulate { pairs }
+impl Triangulate {
+    pub fn new() -> Self {
+        Triangulate {}
     }
 
-    pub fn batch_svd_solve(&self) -> Vec<Point3<f64>> {
-        let mut points = vec![];
-        for item in self.pairs {
-            let point = self.solve(item);
-            points.push(point);
-        }
-        points
-    }
+    // pub fn batch_svd_solve(&self) -> Vec<Point3<f64>> {
+    //     let mut points = vec![];
+    //     for item in self.pairs {
+    //         let point = self.solve(item);
+    //         points.push(point);
+    //     }
+    //     points
+    // }
     /// svd 求解
-    pub fn solve(&self, pair: &(Point3<f64>, Array2<f64>, Point3<f64>)) -> Point3<f64> {
+    pub fn solve(&self, pair: &(&Point3<f64>, &Array2<f64>, &Point3<f64>)) -> Point3<f64> {
         let mut left_matrix = Array2::<f64>::from_shape_vec((0, 3), vec![]).unwrap();
         // for item in self.pair {
         let (point_1, transform_matrix, point_2) = pair;
@@ -109,25 +110,28 @@ impl RelativeDltTriangulator {
     pub fn triangulate_relative(
         &self,
         relative_pose: &Matrix3x4<f64>,
-        a: &Vector3<f64>,
-        b: &Vector3<f64>,
+        a: &Vector2<f64>,
+        b: &Vector2<f64>,
     ) -> Option<Vector3<f64>> {
         let pose = relative_pose;
         let mut design: DMatrix<f64> = DMatrix::<f64>::zeros(4, 4);
+        let eye = Matrix3x4::identity();
         design
             .row_mut(0)
-            .copy_from(&RowVector4::new(-a.z, 0.0, a.x, 0.0));
+            .copy_from(&(a.x * eye.row(2) - eye.row(0)));
         design
             .row_mut(1)
-            .copy_from(&RowVector4::new(0.0, -a.z, a.y, 0.0));
+            .copy_from(&(a.y * eye.row(2) - eye.row(1)));
         design
             .row_mut(2)
-            .copy_from(&(b.x * pose.row(2) - b.z * pose.row(0)));
+            .copy_from(&(b.x * pose.row(2) - pose.row(0)));
         design
             .row_mut(3)
-            .copy_from(&(b.y * pose.row(2) - b.z * pose.row(1)));
+            .copy_from(&(b.y * pose.row(2) - pose.row(1)));
         // let design = DMatrix::cop
         let x = compute_min_vt_eigen_vector(&design);
-        Some(Vector3::from_vec(x))
+        let x = Vector4::from_vec(x);
+        let x = &x / x[(3, 0)];
+        Some(x.xyz())
     }
 }

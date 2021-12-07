@@ -4,7 +4,7 @@ use std::rc::Rc;
 pub use eight_point::*;
 use nalgebra::{
     ArrayStorage, Const, DMatrix, IsometryMatrix3, Matrix, Matrix1, Matrix3, Matrix3x4, Rotation3,
-    Storage, Translation, Translation3, Vector3,
+    Storage, Translation, Translation3, Vector2, Vector3,
 };
 use ndarray::{array, Array1, Array2};
 use nshare::{RefNdarray1, ToNalgebra, ToNdarray2};
@@ -136,8 +136,8 @@ pub fn find_pose_by_essential(
             let matches = match_points_1.iter().zip(match_points_2);
             let world_ps: Vec<Option<Vector3<f64>>> = matches
                 .map(|(p1, p2)| {
-                    let p1 = Vector3::new(p1.x, p1.y, 1.);
-                    let p2 = Vector3::new(p2.x, p2.y, 1.);
+                    let p1 = Vector2::new(p1.x, p1.y);
+                    let p2 = Vector2::new(p2.x, p2.y);
                     let triangulator = RelativeDltTriangulator::new();
 
                     let relative_pose = IsometryMatrix3::from_parts(

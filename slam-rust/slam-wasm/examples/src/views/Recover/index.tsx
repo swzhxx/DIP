@@ -84,9 +84,10 @@ export default (): JSX.Element => {
         i: number,
         s: any
       ) {
-        let x = points[i * 3]
-        let y = refImage.height - points[i * 3 + 1]
         let z = points[i * 3 + 2]
+        let x = points[i * 3] * z
+        let y = (refImage.height - points[i * 3 + 1]) * z
+
         // console.log(`z`)
         particle.position = new Vector3(x, y, z)
         particle.color = new Color4(
@@ -97,7 +98,7 @@ export default (): JSX.Element => {
           refImage.data[i * 4] / 255,
           refImage.data[i * 4 + 1] / 255,
           refImage.data[i * 4 + 2] / 255,
-          255
+          z == 3 ? 0 : 1
         )
 
         // //深度图
