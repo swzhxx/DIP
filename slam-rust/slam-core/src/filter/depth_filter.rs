@@ -13,6 +13,10 @@ use crate::{
     triangulate::{self, RelativeDltTriangulator, Triangulate},
     utils::{cam2px, ncc, px2cam},
 };
+
+/// (u,v,x,y,z)
+pub type Pixel3dCoordinate = (f64, f64, f64, f64, f64);
+
 const border: usize = 20;
 
 pub struct DepthFilter<'a> {
@@ -26,126 +30,11 @@ pub struct DepthFilter<'a> {
     reader: Box<dyn Fn(&'a Vec<Array2<f64>>) -> ReaderResult<'a>>,
     // ref_image: Option<&'a Array2<f64>>,
     // current_image: Option<&'a Array2<f64>>, // images: Vec<Array2<f64>>,
+    pub pixel_3d_coordinate: Vec<Pixel3dCoordinate>,
     camera: Array2<f64>,
 }
 
 impl<'a> DepthFilter<'a> {
-    pub fn new(
-        images: &'a Vec<Array2<f64>>,
-        height: usize,
-        width: usize,
-        depth_mean: Option<f64>,
-        depth_cov: Option<f64>,
-        min_depth: Option<f64>,
-        max_depth: Option<f64>,
-        reader: Box<dyn Fn(&'a Vec<Array2<f64>>) -> ReaderResult<'a>>,
-    ) -> Self {
-        let depth_mean = match depth_mean {
-            Some(val) => val,
-            _ => 3.,
-        };
-        let depth_cov = match depth_cov {
-            Some(val) => val,
-            _ => 20.,
-        };
-        let min_depth = match min_depth {
-            Some(val) => val,
-            _ => 0.1,
-        };
-        let max_depth = match max_depth {
-            Some(val) => val,
-            _ => 40.,
-        };
-        DepthFilter {
-            images,
-            height,
-            width,
-            depth_matrix: Array::from_elem((height, width), depth_mean),
-            depth_cov2_matrix: Array::from_elem((height, width), depth_cov),
-            min_depth,
-            max_depth,
-            reader, // images,
-            // ref_image: None,
-            // current_image: None,
-            camera: array![[1., 0., 0.], [0., 1., 0.], [0., 0., 1.]],
-        }
-    }
-
-    fn reader(&self) -> ReaderResult<'a> {
-        let reader = &self.reader;
-        reader(&self.images)
-    }
-
-    pub fn excute(&mut self) {
-        let (ref_image, option_image, option_projection) = self.reader();
-
-        if ref_image != None && option_image != None && option_projection != None {
-            self.update(
-                ref_image.unwrap(),
-                option_image.unwrap(),
-                &option_projection.unwrap(),
-            );
-            self.excute();
-        }
-    }
-
-    /// 对整个深度图更新
-    pub fn update(
-        &mut self,
-        ref_image: &Array2<f64>,
-        current_image: &Array2<f64>,
-        projection: &Array2<f64>,
-    ) {
-        let mut projection = projection.clone().to_owned();
-        projection
-            .push(Axis(0), array![0., 0., 0., 1.].view())
-            .expect(&format!("projection {:?}", projection));
-        let mut update_count = 0;
-
-        for y in border..(self.height - border) {
-            for x in border..(self.width - border) {
-                if self.depth_cov2_matrix[[y, x]] < self.min_depth
-                    || self.depth_cov2_matrix[[y, x]] > self.max_depth
-                {
-                    continue;
-                }
-                let pt_ref = array![x as f64, y as f64];
-                let depth = self.depth_matrix[[y, x]];
-                let depth_cov = self.depth_cov2_matrix[[y, x]];
-                if let Some((pt_curr, epiploar_direction)) = self.epipolar_search(
-                    &pt_ref,
-                    ref_image,
-                    current_image,
-                    &projection,
-                    depth,
-                    depth_cov,
-                ) {
-                    // TODO: 更新深度图
-                    self.update_depth_filter(
-                        &vector![x as f64, y as f64],
-                        &pt_curr,
-                        &projection,
-                        &epiploar_direction,
-                    );
-
-                    // let mut ref_data = pt_ref.to_owned().into_raw_vec();
-                    // // ref_data.push(1.);
-                    // let pt_ref = Vector2::from_vec(ref_data);
-                    // // let pt_curr = pt_curr;
-                    // let projection = Matrix3x4::from_vec(projection.to_owned().into_raw_vec());
-                    // let P = triangulate
-                    //     .triangulate_relative(&projection, &pt_ref, &pt_curr)
-                    //     .unwrap();
-                    update_count = update_count + 1;
-                    if update_count % 100 == 0 {
-                        println!("update count ing {:?}", update_count);
-                    }
-                }
-            }
-        }
-        println!("update count {:?}", update_count);
-    }
-
     /// 极线搜索
     /// @return (匹配点坐标， 极线方向)
     fn epipolar_search(
@@ -228,6 +117,124 @@ impl<'a> DepthFilter<'a> {
         }
     }
 
+    pub fn excute(&mut self) {
+        let (ref_image, option_image, option_projection) = self.reader();
+
+        if ref_image != None && option_image != None && option_projection != None {
+            self.update(
+                ref_image.unwrap(),
+                option_image.unwrap(),
+                &option_projection.unwrap(),
+            );
+            self.excute();
+        }
+    }
+
+    pub fn new(
+        images: &'a Vec<Array2<f64>>,
+        height: usize,
+        width: usize,
+        depth_mean: Option<f64>,
+        depth_cov: Option<f64>,
+        min_depth: Option<f64>,
+        max_depth: Option<f64>,
+        reader: Box<dyn Fn(&'a Vec<Array2<f64>>) -> ReaderResult<'a>>,
+    ) -> Self {
+        let depth_mean = match depth_mean {
+            Some(val) => val,
+            _ => 3.,
+        };
+        let depth_cov = match depth_cov {
+            Some(val) => val,
+            _ => 20.,
+        };
+        let min_depth = match min_depth {
+            Some(val) => val,
+            _ => 0.1,
+        };
+        let max_depth = match max_depth {
+            Some(val) => val,
+            _ => 40.,
+        };
+        DepthFilter {
+            images,
+            height,
+            width,
+            depth_matrix: Array::from_elem((height, width), depth_mean),
+            depth_cov2_matrix: Array::from_elem((height, width), depth_cov),
+            min_depth,
+            max_depth,
+            reader, // images,
+            // ref_image: None,
+            // current_image: None,
+            camera: array![[1., 0., 0.], [0., 1., 0.], [0., 0., 1.]],
+            pixel_3d_coordinate: vec![],
+        }
+    }
+
+    fn reader(&self) -> ReaderResult<'a> {
+        let reader = &self.reader;
+        reader(&self.images)
+    }
+
+    /// 对整个深度图更新
+    pub fn update(
+        &mut self,
+        ref_image: &Array2<f64>,
+        current_image: &Array2<f64>,
+        projection: &Array2<f64>,
+    ) {
+        let mut projection = projection.clone().to_owned();
+        projection
+            .push(Axis(0), array![0., 0., 0., 1.].view())
+            .expect(&format!("projection {:?}", projection));
+        let mut update_count = 0;
+
+        for y in border..(self.height - border) {
+            for x in border..(self.width - border) {
+                if self.depth_cov2_matrix[[y, x]] < self.min_depth
+                    || self.depth_cov2_matrix[[y, x]] > self.max_depth
+                {
+                    continue;
+                }
+                let pt_ref = array![x as f64, y as f64];
+                let depth = self.depth_matrix[[y, x]];
+                let depth_cov = self.depth_cov2_matrix[[y, x]];
+                if let Some((pt_curr, epiploar_direction)) = self.epipolar_search(
+                    &pt_ref,
+                    ref_image,
+                    current_image,
+                    &projection,
+                    depth,
+                    depth_cov,
+                ) {
+                    // // TODO: 更新深度图
+                    // self.update_depth_filter(
+                    //     &vector![x as f64, y as f64],
+                    //     &pt_curr,
+                    //     &projection,
+                    //     &epiploar_direction,
+                    // );
+
+                    // let mut ref_data = pt_ref.to_owned().into_raw_vec();
+                    // // ref_data.push(1.);
+                    // let pt_ref = Vector2::from_vec(ref_data);
+                    // // let pt_curr = pt_curr;
+                    // let projection = Matrix3x4::from_vec(projection.to_owned().into_raw_vec());
+                    // let P = triangulate
+                    //     .triangulate_relative(&projection, &pt_ref, &pt_curr)
+                    //     .unwrap();
+                    self.update_depth_rlt(&pt_ref, &projection, &pt_curr);
+                    update_count = update_count + 1;
+                    if update_count % 100 == 0 {
+                        println!("update count ing {:?}", update_count);
+                    }
+                }
+            }
+        }
+        println!("update count {:?}", update_count);
+    }
+
     /// 深度图更新
     /// 通过三角化， 进行深度图更新
     fn update_depth_filter(
@@ -297,7 +304,12 @@ impl<'a> DepthFilter<'a> {
         self.depth_matrix[(pt_ref.y as usize, pt_ref.x as usize)] = mu_fuse;
         self.depth_cov2_matrix[(pt_ref.y as usize, pt_ref.x as usize)] = sigma_fuse2;
     }
-    fn update_depth_rlt(pt_ref: &Array2<f64>, projection: &Array2<f64>, pt_curr: &Vector2<f64>) {
+    fn update_depth_rlt(
+        &mut self,
+        pt_ref: &Array1<f64>,
+        projection: &Array2<f64>,
+        pt_curr: &Vector2<f64>,
+    ) {
         let triangulate = RelativeDltTriangulator::new();
         let mut ref_data = pt_ref.to_owned().into_raw_vec();
         // ref_data.push(1.);
@@ -307,6 +319,8 @@ impl<'a> DepthFilter<'a> {
         let P = triangulate
             .triangulate_relative(&projection, &pt_ref, &pt_curr)
             .unwrap();
+        self.pixel_3d_coordinate
+            .push((pt_ref[0], pt_ref[1], P.x, P.y, P.z));
     }
 }
 

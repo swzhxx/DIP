@@ -47,10 +47,10 @@ export default (): JSX.Element => {
     let refImage = images[0]
 
     let recover = new Slam.Recover3D(images)
-    let points = recover.recover_3d_point()
-    let depths = recover.get_normalize_depth()
+    let points = recover.recover_3d_without_color(1000)
+    // let depths = recover.get_normalize_depth()
     console.log(`points`, points)
-    console.log(`depths`, depths)
+    // console.log(`depths`, depths)
     const el = canvas3dEl.current
     if (!el) {
       return
@@ -86,7 +86,7 @@ export default (): JSX.Element => {
       ) {
         let z = points[i * 3 + 2]
         let x = points[i * 3] * z
-        let y = (refImage.height - points[i * 3 + 1]) * z
+        let y = points[i * 3 + 1]
 
         // console.log(`z`)
         particle.position = new Vector3(x, y, z)
@@ -94,11 +94,10 @@ export default (): JSX.Element => {
           // depths[i] / 255,
           // depths[i] / 255,
           // depths[i] / 255,
-
-          refImage.data[i * 4] / 255,
-          refImage.data[i * 4 + 1] / 255,
-          refImage.data[i * 4 + 2] / 255,
-          z == 3 ? 0 : 1
+          1,
+          1,
+          1,
+          1
         )
 
         // //深度图

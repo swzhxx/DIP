@@ -1,11 +1,11 @@
 use std::{borrow::Borrow, cell::RefCell, clone, rc::Rc};
 
-use nalgebra::Matrix3;
+use nalgebra::{coordinates, Matrix3, Vector3};
 use ndarray::{array, Array2, Axis};
 use nshare::{RefNdarray2, ToNalgebra};
 use slam_core::{
     features::fast::OFast,
-    filter::depth_filter::{DepthFilter, ReaderResult},
+    filter::depth_filter::{DepthFilter, Pixel3dCoordinate, ReaderResult},
     matches::orb::Orb,
     point::{self, Point2, Point3},
     sfm::{get_projection_through_fundamental, EightPoint},
@@ -121,34 +121,69 @@ impl Recover3D {
         }
     }
 
-    pub fn recover_3d_point(&mut self) -> Vec<f64> {
-        let depths = self.compute_depth();
-        let ref_image = &self.images[0];
-        // ref_image.zip_mut_with(&depth, || {});
-        let mut point_cloud = vec![];
-        let shape = ref_image.shape();
-        for y in 0..shape[0] {
-            for x in 0..shape[1] {
-                let depth = depths[[y, x]];
-                // let color = ref_image[[y, x]];
-                point_cloud.push(x as f64);
-                point_cloud.push(y as f64);
-                point_cloud.push(depth);
-                // point_cloud.push(color);
+    pub fn recover_3d_without_color(&mut self, normalize_scale_space: f64) -> Vec<f64> {
+        let coordinates = self.compute_depth();
+        let mut points: Vec<Vector3<f64>> = coordinates
+            .iter()
+            .map(|p| return Vector3::new(p.2, p.3, p.4))
+            .collect();
+        let (min, max, total) = points.iter().fold((0., 0., 0.), |prev, p| {
+            let (mut min, mut max, mut total) = prev;
+            let norm = p.norm();
+            if min > norm {
+                min = norm;
             }
-        }
-        point_cloud
+            if max < norm {
+                max = norm;
+            }
+            total += norm;
+            return (min, max, total);
+        });
+        let mean = total / points.len() as f64;
+        web_sys::console::log_1(&format!("min {:?} max {:?} mean {:?}", min, max, mean).into());
+        let points = points
+            .into_iter()
+            .map(|p| {
+                let norm = p.norm();
+                let scale = norm / mean;
+                scale * normalize_scale_space * p
+            })
+            .fold(vec![], |mut acc, p| {
+                acc.push(p.x);
+                acc.push(p.y);
+                acc.push(p.z);
+                acc
+            });
+        points
     }
-    pub fn get_normalize_depth(&mut self) -> Vec<f64> {
-        let depths = self.compute_depth();
-        let mut nomalize_depths = nomalize_gray_color(&depths);
-        let nomalize_depths = 255. - nomalize_depths;
-        nomalize_depths.into_raw_vec()
-    }
+    // pub fn recover_3d_point(&mut self) -> Vec<f64> {
+    //     let depths = self.compute_depth();
+    //     let ref_image = &self.images[0];
+    //     // ref_image.zip_mut_with(&depth, || {});
+    //     let mut point_cloud = vec![];
+    //     let shape = ref_image.shape();
+    //     for y in 0..shape[0] {
+    //         for x in 0..shape[1] {
+    //             let depth = depths[[y, x]];
+    //             // let color = ref_image[[y, x]];
+    //             point_cloud.push(x as f64);
+    //             point_cloud.push(y as f64);
+    //             point_cloud.push(depth);
+    //             // point_cloud.push(color);
+    //         }
+    //     }
+    //     point_cloud
+    // }
+    // pub fn get_normalize_depth(&mut self) -> Vec<f64> {
+    //     let depths = self.compute_depth();
+    //     let mut nomalize_depths = nomalize_gray_color(&depths);
+    //     let nomalize_depths = 255. - nomalize_depths;
+    //     nomalize_depths.into_raw_vec()
+    // }
 }
 
 impl Recover3D {
-    pub fn compute_depth(&mut self) -> Array2<f64> {
+    pub fn compute_depth(&mut self) -> Vec<Pixel3dCoordinate> {
         let ref_image = &self.images[0];
         let shape = ref_image.shape();
 
@@ -220,6 +255,6 @@ impl Recover3D {
             reader,
         );
         depth_filter.excute();
-        depth_filter.depth_matrix.clone()
+        depth_filter.pixel_3d_coordinate.clone()
     }
 }
