@@ -121,13 +121,13 @@ impl RelativeDltTriangulator {
             .copy_from(&(-eye.row(1) + a.y * eye.row(2)));
         design
             .row_mut(1)
-            .copy_from(&(eye.row(0) - a.x * eye.row(2)));
+            .copy_from(&(-eye.row(0) + a.x * eye.row(2)));
         design
             .row_mut(2)
-            .copy_from(&(-pose.row(0) + b.y * pose.row(2)));
+            .copy_from(&(-pose.row(1) + b.y * pose.row(2)));
         design
             .row_mut(3)
-            .copy_from(&(pose.row(1) - b.x * pose.row(2)));
+            .copy_from(&(-pose.row(0) + b.x * pose.row(2)));
         // let design = DMatrix::cop
         let x = compute_min_vt_eigen_vector(&design);
         let x = Vector4::from_vec(x);

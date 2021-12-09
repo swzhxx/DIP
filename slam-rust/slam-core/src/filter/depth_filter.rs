@@ -311,7 +311,7 @@ impl<'a> DepthFilter<'a> {
         pt_curr: &Vector2<f64>,
     ) {
         let triangulate = RelativeDltTriangulator::new();
-        let mut ref_data = pt_ref.to_owned().into_raw_vec();
+        let ref_data = pt_ref.to_owned().into_raw_vec();
         // ref_data.push(1.);
         let pt_ref = Vector2::from_vec(ref_data);
         // let pt_curr = pt_curr;
@@ -320,7 +320,7 @@ impl<'a> DepthFilter<'a> {
             .triangulate_relative(&projection, &pt_ref, &pt_curr)
             .unwrap();
         self.pixel_3d_coordinate
-            .push((pt_ref[0], pt_ref[1], P.x, P.y, P.z));
+            .push((pt_ref.x, pt_ref.y, P.x, P.y, P.z));
     }
 }
 

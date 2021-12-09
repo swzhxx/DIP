@@ -1,6 +1,6 @@
 use std::{borrow::Borrow, cell::RefCell, clone, rc::Rc};
 
-use nalgebra::{coordinates, Matrix3, Vector3};
+use nalgebra::{coordinates, Matrix3, Vector3, Vector2};
 use ndarray::{array, Array2, Axis};
 use nshare::{RefNdarray2, ToNalgebra};
 use slam_core::{
@@ -123,11 +123,11 @@ impl Recover3D {
 
     pub fn recover_3d_without_color(&mut self, normalize_scale_space: f64) -> Vec<f64> {
         let coordinates = self.compute_depth();
-        let mut points: Vec<Vector3<f64>> = coordinates
+        let mut points: Vec<(Vector3<f64>, Vector2<f64>)> = coordinates
             .iter()
-            .map(|p| return Vector3::new(p.2, p.3, p.4))
+            .map(|p| return (Vector3::new(p.2, p.3, p.4), Vector2::new(p.0, p.1)))
             .collect();
-        let (min, max, total) = points.iter().fold((0., 0., 0.), |prev, p| {
+        let (min, max, total) = points.iter().fold((0., 0., 0.), |prev, (p , uv)| {
             let (mut min, mut max, mut total) = prev;
             let norm = p.norm();
             if min > norm {
@@ -143,15 +143,17 @@ impl Recover3D {
         web_sys::console::log_1(&format!("min {:?} max {:?} mean {:?}", min, max, mean).into());
         let points = points
             .into_iter()
-            .map(|p| {
+            .map(|(p , uv)| {
                 let norm = p.norm();
-                let scale = norm / mean;
-                scale * normalize_scale_space * p
+                let scale = norm / mean * (1. / mean);
+                (scale * normalize_scale_space * p , uv)
             })
-            .fold(vec![], |mut acc, p| {
+            .fold(vec![], |mut acc, (p , uv)| {
                 acc.push(p.x);
                 acc.push(p.y);
                 acc.push(p.z);
+                acc.push(uv.x);
+                acc.push(uv.y);
                 acc
             });
         points

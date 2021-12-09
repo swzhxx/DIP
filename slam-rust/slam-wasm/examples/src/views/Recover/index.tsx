@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react'
-import House1 from '@/assets/image/1.png'
-import House2 from '@/assets/image/2.png'
+import House1 from '@/assets/image/1s.png'
+import House2 from '@/assets/image/2s.png'
 import { initImageElement, imageElementToImageData } from '@/utils/image'
 import { Slam } from '@/slam'
 
@@ -47,7 +47,7 @@ export default (): JSX.Element => {
     let refImage = images[0]
 
     let recover = new Slam.Recover3D(images)
-    let points = recover.recover_3d_without_color(1000)
+    let points = recover.recover_3d_without_color(100)
     // let depths = recover.get_normalize_depth()
     console.log(`points`, points)
     // console.log(`depths`, depths)
@@ -63,12 +63,10 @@ export default (): JSX.Element => {
         0,
         0,
         8,
-        new Vector3(refImage.width / 2, refImage.height / 2, 0),
+        new Vector3(0, 0, 0),
         scene
       )
-      camera.setPosition(
-        new Vector3(refImage.width / 2, refImage.height / 2, 4000)
-      )
+      camera.setPosition(new Vector3(0, 0, 4000))
       // let camera = new FreeCamera(
       //   'Camera',
       //   new Vector3(refImage.width / 2, refImage.height / 2, 1000),
@@ -85,18 +83,23 @@ export default (): JSX.Element => {
         s: any
       ) {
         let z = points[i * 3 + 2]
-        let x = points[i * 3] * z
+        let x = points[i * 3]
         let y = points[i * 3 + 1]
-
+        let u = parseInt(points[i * 3 + 3] + '')
+        let v = parseInt(points[i * 3 + 4] + '')
+        let index = v * refImage.width + u
+        let r = points[index * 4] / 255
+        let g = points[index * 4 + 1] / 255
+        let b = points[index * 4 + 2] / 255
         // console.log(`z`)
         particle.position = new Vector3(x, y, z)
         particle.color = new Color4(
           // depths[i] / 255,
           // depths[i] / 255,
           // depths[i] / 255,
-          1,
-          1,
-          1,
+          r,
+          g,
+          b,
           1
         )
 
@@ -134,8 +137,8 @@ export default (): JSX.Element => {
   }
   return (
     <canvas
-      width={canvasReact.width}
-      height={canvasReact.height}
+      width={1000}
+      height={1000}
       ref={canvas3dEl}
     ></canvas>
   )
