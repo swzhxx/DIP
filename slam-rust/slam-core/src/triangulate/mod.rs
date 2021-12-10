@@ -131,7 +131,7 @@ impl RelativeDltTriangulator {
         // let design = DMatrix::cop
         let x = compute_min_vt_eigen_vector(&design);
         let x = Vector4::from_vec(x);
-        let x = &x / x[(3, 0)];
+        let x = &x / x.w;
         Some(x.xyz())
     }
 }

@@ -66,7 +66,7 @@ export default (): JSX.Element => {
         new Vector3(0, 0, 0),
         scene
       )
-      camera.setPosition(new Vector3(0, 0, 4000))
+      camera.setPosition(new Vector3(0, 0, -4000))
       // let camera = new FreeCamera(
       //   'Camera',
       //   new Vector3(refImage.width / 2, refImage.height / 2, 1000),
@@ -82,15 +82,15 @@ export default (): JSX.Element => {
         i: number,
         s: any
       ) {
-        let z = points[i * 3 + 2]
-        let x = points[i * 3]
-        let y = points[i * 3 + 1]
-        let u = parseInt(points[i * 3 + 3] + '')
-        let v = parseInt(points[i * 3 + 4] + '')
+        let z = points[i * 5 + 2]
+        let x = points[i * 5]
+        let y = points[i * 5 + 1]
+        let u = parseInt(points[i * 5 + 3] + '')
+        let v = parseInt(points[i * 5 + 4] + '')
         let index = v * refImage.width + u
-        let r = points[index * 4] / 255
-        let g = points[index * 4 + 1] / 255
-        let b = points[index * 4 + 2] / 255
+        let r = refImage.data[index * 4] / 255
+        let g = refImage.data[index * 4 + 1] / 255
+        let b = refImage.data[index * 4 + 2] / 255
         // console.log(`z`)
         particle.position = new Vector3(x, y, z)
         particle.color = new Color4(
@@ -126,7 +126,7 @@ export default (): JSX.Element => {
         //   recoverInfo.colors[4 * i + 4]
         // )
       }
-      pcs.addPoints(points.length / 3, setPoint)
+      pcs.addPoints(points.length / 5, setPoint)
       pcs.buildMeshAsync()
       return scene
     }
@@ -135,11 +135,5 @@ export default (): JSX.Element => {
       scene.render()
     })
   }
-  return (
-    <canvas
-      width={1000}
-      height={1000}
-      ref={canvas3dEl}
-    ></canvas>
-  )
+  return <canvas width={800} height={800} ref={canvas3dEl}></canvas>
 }

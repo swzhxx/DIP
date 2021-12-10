@@ -2,11 +2,11 @@ use std::{f64::consts::PI, marker::PhantomData, thread::current};
 
 use image::imageops::FilterType::Triangle;
 use nalgebra::{
-    matrix, vector, AbstractRotation, Const, DMatrix, Dynamic, Matrix2, Matrix3, Matrix3x2,
+    matrix, vector, AbstractRotation, Const, DMatrix, Dynamic, Matrix, Matrix2, Matrix3, Matrix3x2,
     Matrix3x4, MatrixXx3, Vector2, Vector3, Vector4,
 };
 use ndarray::{array, s, Array, Array1, Array2, ArrayBase, Axis, OwnedRepr};
-use nshare::ToNalgebra;
+use nshare::{RefNdarray2, ToNalgebra};
 
 use crate::{
     point::Point3,
@@ -65,9 +65,9 @@ impl<'a> DepthFilter<'a> {
         let P_ref_rt = P_ref.clone_owned();
         let px_mean_curr = cam2px(&P_ref_rt.xyz(), &self.camera);
         let min_p_curr = Vector4::from_vec((&projection * min_P_ref).data.as_vec().to_vec());
-        let px_min_curr = (min_p_curr / min_p_curr.z).xy();
+        let px_min_curr = (min_p_curr / min_p_curr.w / min_p_curr.z).xy();
         let max_p_curr = Vector4::from_vec((&projection * max_P_ref).data.as_vec().to_vec());
-        let px_max_curr = (max_p_curr / max_p_curr.z).xy();
+        let px_max_curr = (max_p_curr / min_p_curr.w / max_p_curr.z).xy();
 
         // let px_min_curr = cam2px(
         //     &vector![min_f_ref_rt[0], min_f_ref_rt[1], min_f_ref_rt[2]],
@@ -315,7 +315,11 @@ impl<'a> DepthFilter<'a> {
         // ref_data.push(1.);
         let pt_ref = Vector2::from_vec(ref_data);
         // let pt_curr = pt_curr;
-        let projection = Matrix3x4::from_vec(projection.to_owned().into_raw_vec());
+        // let projection = Matrix3x4::from_vec(projection.to_owned().into_raw_vec());
+        let projection = projection.to_owned().into_nalgebra();
+        let projection = projection.slice((0, 0), (3, 4)).into_owned();
+        let projection = Matrix3x4::from_vec(projection.data.as_vec().to_vec());
+
         let P = triangulate
             .triangulate_relative(&projection, &pt_ref, &pt_curr)
             .unwrap();
