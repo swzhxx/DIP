@@ -6,18 +6,33 @@ use nalgebra::{
 use nshare::RefNdarray2;
 
 pub fn compute_min_vt_eigen_vector(m: &DMatrix<f64>) -> Vec<f64> {
-    let v = m.transpose() * m;
-    let svd = v.svd(true, false);
-    let (ix, &v) = svd
-        .singular_values
-        .iter()
-        .enumerate()
-        .min_by_key(|&(_, &v)| float_ord::FloatOrd(v))
-        .expect("single_values failed");
-    let u = svd.u.expect("u failed");
-    let column = u.column(ix).to_owned();
-    let min_eigen_vector: Vec<f64> = column.ref_ndarray2().to_owned().into_raw_vec();
-    min_eigen_vector
+    let shape = m.shape();
+    if shape.0 != shape.1 {
+        let v = m.transpose() * m;
+        let svd = v.svd(true, false);
+        let (ix, &v) = svd
+            .singular_values
+            .iter()
+            .enumerate()
+            .min_by_key(|&(_, &v)| float_ord::FloatOrd(v))
+            .expect("single_values failed");
+        let u = svd.u.expect("u failed");
+        let column = u.column(ix).to_owned();
+        let min_eigen_vector: Vec<f64> = column.ref_ndarray2().to_owned().into_raw_vec();
+        min_eigen_vector
+    } else {
+        let m = m.clone().to_owned();
+        let mut svd = m.svd(true, true);
+        sort_svd(&mut svd);
+        let min_eigen_vector = svd
+            .v_t
+            .unwrap()
+            .row(shape.0 - 1)
+            .ref_ndarray2()
+            .to_owned()
+            .into_raw_vec();
+        min_eigen_vector
+    }
 }
 
 pub fn sort_svd<T, R, C>(svd: &mut SVD<T, R, C>)

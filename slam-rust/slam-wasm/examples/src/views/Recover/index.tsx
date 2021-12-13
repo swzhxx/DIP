@@ -47,7 +47,7 @@ export default (): JSX.Element => {
     let refImage = images[0]
 
     let recover = new Slam.Recover3D(images)
-    let points = recover.recover_3d_without_color(100)
+    let points = recover.recover_3d_without_color(320)
     // let depths = recover.get_normalize_depth()
     console.log(`points`, points)
     // console.log(`depths`, depths)
@@ -62,19 +62,16 @@ export default (): JSX.Element => {
         'Camera',
         0,
         0,
-        8,
+        20,
         new Vector3(0, 0, 0),
         scene
       )
       camera.setPosition(new Vector3(0, 0, -4000))
-      // let camera = new FreeCamera(
-      //   'Camera',
-      //   new Vector3(refImage.width / 2, refImage.height / 2, 1000),
-      //   scene
-      // )
-      // let camera = new UniversalCamera()
-      camera.attachControl(el, true)
-
+      // const camera = new FreeCamera('camera1', new Vector3(0, 0, -4000), scene)
+      // camera.inputs.addMouseWheel()
+      // camera.setTarget(Vector3.Zero())
+      camera.attachControl(true)
+      
       var pcs = new PointsCloudSystem('pcs', 2, scene)
 
       var setPoint = function (

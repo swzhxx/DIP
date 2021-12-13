@@ -31,7 +31,9 @@ pub fn get_projection_through_fundamental(fundamental: &Array2<f64>) -> Matrix3x
     // let a = -&b.dot(fundamental);
     let mut ret = (-1. * &b).dot(fundamental);
     ret.push_column(less_eigen_vector.ref_ndarray1()).unwrap();
+
     let ret = ret.into_nalgebra();
+
     Matrix3x4::from_vec(ret.data.as_vec().to_vec())
 }
 

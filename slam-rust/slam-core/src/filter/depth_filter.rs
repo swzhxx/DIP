@@ -1,6 +1,5 @@
 use std::{f64::consts::PI, marker::PhantomData, thread::current};
 
-use image::imageops::FilterType::Triangle;
 use nalgebra::{
     matrix, vector, AbstractRotation, Const, DMatrix, Dynamic, Matrix, Matrix2, Matrix3, Matrix3x2,
     Matrix3x4, MatrixXx3, Vector2, Vector3, Vector4,
@@ -154,7 +153,7 @@ impl<'a> DepthFilter<'a> {
         };
         let max_depth = match max_depth {
             Some(val) => val,
-            _ => 40.,
+            _ => 100.,
         };
         DepthFilter {
             images,
@@ -323,8 +322,12 @@ impl<'a> DepthFilter<'a> {
         let P = triangulate
             .triangulate_relative(&projection, &pt_ref, &pt_curr)
             .unwrap();
+        let z_1 = P.x / pt_ref.x;
+        let z_2 = P.y / pt_ref.y;
+        let pz = (z_1 + z_2) / 2.;
+
         self.pixel_3d_coordinate
-            .push((pt_ref.x, pt_ref.y, P.x, P.y, P.z));
+            .push((pt_ref.x, pt_ref.y, P.x, P.y,pz));
     }
 }
 
