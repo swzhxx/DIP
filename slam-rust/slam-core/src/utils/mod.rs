@@ -1,7 +1,10 @@
-use nalgebra::{vector, Vector2, Vector3};
+use nalgebra::{vector, DMatrix, Vector2, Vector3};
 use ndarray::{array, s, Array, Array1, Array2};
 
-use crate::point::{Point, Point2, Point3};
+use crate::{
+    matches::DMatch,
+    point::{Point, Point2, Point3},
+};
 
 /// @param p 为像素坐标 ，
 ///
@@ -77,6 +80,13 @@ pub fn ncc(
     numberator / (divisior + 1e-18)
 }
 
+// pub fn rq<T>(m: &DMatrix<T>) -> (DMatrix<T>, DMatrix<T>) {
+//     let shape = m.shape();
+//     if shape.0 != shape.1 {
+//         panic!("matrix is not eq")
+//     }
+//     todo!()
+// }
 #[cfg(test)]
 mod test {
     use ndarray::Array;

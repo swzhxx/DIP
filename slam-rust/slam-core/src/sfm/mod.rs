@@ -4,11 +4,11 @@ use std::rc::Rc;
 pub use eight_point::*;
 use nalgebra::{
     ArrayStorage, Const, DMatrix, IsometryMatrix3, Matrix, Matrix1, Matrix3, Matrix3x4, Rotation3,
-    Storage, Translation, Translation3, Vector2, Vector3,
+    Storage, Translation, Translation3, Vector2, Vector3, QR,
 };
 use ndarray::{array, Array1, Array2};
 use nshare::{RefNdarray1, ToNalgebra, ToNdarray2};
-use num_traits::Float;
+use num_traits::{Float, Pow};
 
 use crate::{
     optimize::LM,
@@ -23,6 +23,7 @@ pub fn get_projection_through_fundamental(fundamental: &Array2<f64>) -> Matrix3x
 
     let less_eigen_vector = compute_min_vt_eigen_vector(&f_t);
     let less_eigen_vector = Vector3::from_vec(less_eigen_vector).normalize();
+    let less_eigen_vector = less_eigen_vector / less_eigen_vector.z;
     let b = array![
         [0., -less_eigen_vector[2], less_eigen_vector[1]],
         [less_eigen_vector[2], 0., -less_eigen_vector[0]],
@@ -53,7 +54,9 @@ pub fn projection_decomposition(
     let v0: f64 = rho.powf(2.) * &a2.dot(&a3);
     let a1_cross_a3 = a1.cross(&a3);
     let a2_cross_a3 = a2.cross(&a3);
-    //let cos_theta = -(a1_cross_a3.dot(&a2_cross_a3) / (a1_cross_a3.norm() * a2_cross_a3.norm()));
+    println!("cross {:?}", &a1_cross_a3.dot(&a2_cross_a3));
+    println!("norm {:?}", &a1_cross_a3.norm() * a2_cross_a3.norm());
+    let cos_theta = -(a1_cross_a3.dot(&a2_cross_a3) / (a1_cross_a3.norm() * a2_cross_a3.norm()));
     // let cos_theta = 0.;
     // let theta = cos_theta.acos();
     // let alpha = rho.powf(2.) * a1_cross_a3.norm() * theta.sin();
@@ -91,6 +94,52 @@ pub fn projection_decomposition(
 
     let k_outer = Matrix3x4::from_vec(k_outer.to_owned().data.as_vec().to_vec());
     (k_inner, k_outer)
+}
+
+/// qr分解得到摄像机矩阵[https://www.mathworks.com/matlabcentral/answers/472171-how-to-calculate-the-camera-intrinsics-k-rotation-matrix-r-and-translation-vector-t-through-the-ca]
+pub fn compute_projection_qr_decomposition(p: &Matrix3x4<f64>) -> (Matrix3<f64>, Matrix3x4<f64>) {
+    let m = p.slice((0, 0), (3, 3));
+
+    let c = -m[(2, 2)] / (m[(2, 2)].powf(2.) + m[(2, 1)].powf(2.)).sqrt();
+    let s = m[(2, 1)] / (m[(2, 2)].powf(2.) + m[(2, 1)].powf(2.)).sqrt();
+    let Qx = Matrix3::from_vec(vec![1., 0., 0., 0., c, -s, 0., s, c]);
+    let R = &m * &Qx;
+    let c = R[(2, 2)] / (R[(2, 2)].powf(2.) + R[(2, 0)].powf(2.)).sqrt();
+    let s = R[(2, 0)] / (R[(2, 2)].powf(2.) + R[(2, 0)].powf(2.)).sqrt();
+    let Qy = Matrix3::from_vec(vec![c, 0., s, 0., 1., 0., -s, 0., c]);
+    let R = &R * &Qy;
+
+    let c = -R[(1, 1)] / (R[(1, 1)].powf(2.) + R[(1, 0)].powf(2.)).sqrt();
+    let s = R[(1, 0)] / (R[(1, 1)].powf(2.) + R[(1, 0)].powf(2.)).sqrt();
+    let Qz = Matrix3::from_vec(vec![c, -s, 0., s, c, 0., 0., 0., 1.]);
+    let K = &R * &Qz;
+    let K = Matrix3::from_vec(K.data.as_vec().to_vec());
+    let mut R = Qz.transpose() * Qy.transpose() * Qx.transpose();
+
+    let mut temp = Matrix3::from_element(0.);
+    temp.column_mut(0).copy_from(&p.column(1));
+    temp.column_mut(1).copy_from(&p.column(2));
+    temp.column_mut(2).copy_from(&p.column(3));
+    let x = temp.determinant();
+    temp.column_mut(0).copy_from(&p.column(0));
+    temp.column_mut(1).copy_from(&p.column(2));
+    temp.column_mut(2).copy_from(&p.column(3));
+    let y = -temp.determinant();
+    temp.column_mut(0).copy_from(&p.column(0));
+    temp.column_mut(1).copy_from(&p.column(1));
+    temp.column_mut(2).copy_from(&p.column(3));
+    let z = temp.determinant();
+    temp.column_mut(0).copy_from(&p.column(0));
+    temp.column_mut(1).copy_from(&p.column(1));
+    temp.column_mut(2).copy_from(&p.column(2));
+    let w = -temp.determinant();
+    let c = Vector3::from_vec(vec![x / w, y / w, z / w]);
+    let t = -1. * R * c;
+    let pose = R;
+    let mut pose = pose.insert_column(3, 0.);
+    pose.column_mut(3).copy_from(&t);
+    let pose = Matrix3x4::from_vec(pose.data.as_slice().to_vec());
+    (K, pose)
 }
 
 // 本质矩阵的分解
@@ -260,26 +309,16 @@ mod test {
 
     use crate::sfm::{get_projection_through_fundamental, projection_decomposition};
 
+    use super::compute_projection_qr_decomposition;
+
     // use crate::sfm::{find_pose, };
     #[test]
     fn test_find_pose() {
         let shape = [3, 3];
         let fundamental = array![
-            [
-                0.00000030289221999405154,
-                0.000005869970528177112,
-                0.011360760530248645
-            ],
-            [
-                0.000008181615238416967,
-                -0.0000015521808080155693,
-                0.0015044011091202663
-            ],
-            [
-                -0.014145388104204511,
-                0.003523120361907385,
-                -0.9998280679192365
-            ]
+            [-1.07279228e-6, -6.86920909e-6, 1.01738633e-2],
+            [7.94177432e-6, -8.12004154e-7, -8.60374800e-3],
+            [-9.82274416e-3, 8.47099691e-3, 1.]
         ];
         let projection_matrix = get_projection_through_fundamental(&fundamental);
         // let projection_matrix = Matrix3x4::from_vec(vec![
@@ -300,5 +339,26 @@ mod test {
         println!("projection {:?}", projection_matrix);
         let (k_inner, pose) = projection_decomposition(&projection_matrix);
         println!("k_inner {:?} \n pose {:?} ", k_inner, pose);
+    }
+
+    #[test]
+    fn test_projection_qr() {
+        let p = Matrix3x4::from_vec(vec![
+            3.53553e2,
+            -1.03528e2,
+            7.07107e-1,
+            3.39645e2,
+            2.33212e1,
+            -3.53553e-1,
+            2.77744e2,
+            4.59607e2,
+            6.12372e-1,
+            -1.44946e6,
+            -6.32525e5,
+            -9.18559e2,
+        ]);
+        let (k, pose) = compute_projection_qr_decomposition(&p);
+        println!("k {:?}", k);
+        println!("pose{:?}", pose);
     }
 }
