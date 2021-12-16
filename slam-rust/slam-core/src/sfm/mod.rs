@@ -23,14 +23,14 @@ pub fn get_projection_through_fundamental(fundamental: &Array2<f64>) -> Matrix3x
 
     let less_eigen_vector = compute_min_vt_eigen_vector(&f_t);
     let less_eigen_vector = Vector3::from_vec(less_eigen_vector).normalize();
-    let less_eigen_vector = less_eigen_vector / less_eigen_vector.z;
+    // let less_eigen_vector = less_eigen_vector / less_eigen_vector.z;
     let b = array![
         [0., -less_eigen_vector[2], less_eigen_vector[1]],
         [less_eigen_vector[2], 0., -less_eigen_vector[0]],
         [-less_eigen_vector[1], less_eigen_vector[0], 0.]
     ];
     // let a = -&b.dot(fundamental);
-    let mut ret = (-1. * &b).dot(fundamental);
+    let mut ret = (&b).dot(&fundamental.t());
     ret.push_column(less_eigen_vector.ref_ndarray1()).unwrap();
 
     let ret = ret.into_nalgebra();
@@ -102,20 +102,27 @@ pub fn compute_projection_qr_decomposition(p: &Matrix3x4<f64>) -> (Matrix3<f64>,
 
     let c = -m[(2, 2)] / (m[(2, 2)].powf(2.) + m[(2, 1)].powf(2.)).sqrt();
     let s = m[(2, 1)] / (m[(2, 2)].powf(2.) + m[(2, 1)].powf(2.)).sqrt();
-    let Qx = Matrix3::from_vec(vec![1., 0., 0., 0., c, -s, 0., s, c]);
+    let Qx = Matrix3::from_vec(vec![1., 0., 0., 0., c, s, 0., -s, c]);
     let R = &m * &Qx;
     let c = R[(2, 2)] / (R[(2, 2)].powf(2.) + R[(2, 0)].powf(2.)).sqrt();
     let s = R[(2, 0)] / (R[(2, 2)].powf(2.) + R[(2, 0)].powf(2.)).sqrt();
-    let Qy = Matrix3::from_vec(vec![c, 0., s, 0., 1., 0., -s, 0., c]);
+    let Qy = Matrix3::from_vec(vec![c, 0., -s, 0., 1., 0., s, 0., c]);
     let R = &R * &Qy;
 
     let c = -R[(1, 1)] / (R[(1, 1)].powf(2.) + R[(1, 0)].powf(2.)).sqrt();
     let s = R[(1, 0)] / (R[(1, 1)].powf(2.) + R[(1, 0)].powf(2.)).sqrt();
-    let Qz = Matrix3::from_vec(vec![c, -s, 0., s, c, 0., 0., 0., 1.]);
+    let Qz = Matrix3::from_vec(vec![c, s, 0., -s, c, 0., 0., 0., 1.]);
     let K = &R * &Qz;
-    let K = Matrix3::from_vec(K.data.as_vec().to_vec());
+    let mut K = Matrix3::from_vec(K.data.as_vec().to_vec());
     let mut R = Qz.transpose() * Qy.transpose() * Qx.transpose();
-
+    for y in 0..3 {
+        for x in 0..3 {
+            if K[(y, x)] < 0. {
+                K[(y, x)] = -K[(y, x)];
+                R[(y, x)] = -R[(y, x)];
+            }
+        }
+    }
     let mut temp = Matrix3::from_element(0.);
     temp.column_mut(0).copy_from(&p.column(1));
     temp.column_mut(1).copy_from(&p.column(2));
