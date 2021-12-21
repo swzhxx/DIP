@@ -23,7 +23,7 @@ pub fn get_projection_through_fundamental(fundamental: &Array2<f64>) -> Matrix3x
 
     let less_eigen_vector = compute_min_vt_eigen_vector(&f_t);
     let less_eigen_vector = Vector3::from_vec(less_eigen_vector).normalize();
-    // let less_eigen_vector = less_eigen_vector / less_eigen_vector.z;
+    let less_eigen_vector = less_eigen_vector / less_eigen_vector.z;
     let b = array![
         [0., -less_eigen_vector[2], less_eigen_vector[1]],
         [less_eigen_vector[2], 0., -less_eigen_vector[0]],
@@ -114,6 +114,7 @@ pub fn compute_projection_qr_decomposition(p: &Matrix3x4<f64>) -> (Matrix3<f64>,
     let Qz = Matrix3::from_vec(vec![c, s, 0., -s, c, 0., 0., 0., 1.]);
     let K = &R * &Qz;
     let mut K = Matrix3::from_vec(K.data.as_vec().to_vec());
+    let mut K = K / K[(2, 2)];
     let mut R = Qz.transpose() * Qy.transpose() * Qx.transpose();
     for y in 0..3 {
         for x in 0..3 {
@@ -313,6 +314,7 @@ type MatchPoints<T> = Vec<Point2<T>>;
 mod test {
     use nalgebra::{Matrix3, Matrix3x4};
     use ndarray::{array, Array2};
+    use nshare::ToNalgebra;
 
     use crate::sfm::{get_projection_through_fundamental, projection_decomposition};
 
@@ -322,29 +324,26 @@ mod test {
     #[test]
     fn test_find_pose() {
         let shape = [3, 3];
-        let fundamental = array![
-            [-1.07279228e-6, -6.86920909e-6, 1.01738633e-2],
-            [7.94177432e-6, -8.12004154e-7, -8.60374800e-3],
-            [-9.82274416e-3, 8.47099691e-3, 1.]
-        ];
+        let fundamental = array![[ 2.79581382e-06, -7.78641696e-06, 5.09004126e-03],
+        [ 1.21599362e-05, -8.33557647e-07, 3.61811421e-03],
+        [-7.47814732e-03, -5.23955075e-03, 1.00000000e+00]];
         let projection_matrix = get_projection_through_fundamental(&fundamental);
+        
         // let projection_matrix = Matrix3x4::from_vec(vec![
-        //     3.53553e2,
-        //     3.39645e2,
-        //     2.77744e2,
-        //     -1.44946e6,
-        //     -1.03528e2,
-        //     2.332122e1,
-        //     4.59607e2,
-        //     -6.32525e5,
-        //     7.07107e-1,
-        //     -3.53553e-1,
-        //     6.12372e-1,
-        //     -9.18559e2,
+        //     -7.48030043e-01,
+        //     1.80474514e+0,
+        //     1.76908427e-02,
+        //     8.04740348e-01,
+        //     -1.94187082e+00,
+        //     8.07168914e-03,
+        //     8.95374068e+01,
+        //     -2.15996573e+02,
+        //     -4.54385772e+00,
+        //     2.16003609e+02,
+        //     8.95192868e+01,1.
         // ]);
-
         println!("projection {:?}", projection_matrix);
-        let (k_inner, pose) = projection_decomposition(&projection_matrix);
+        let (k_inner, pose) = compute_projection_qr_decomposition(&projection_matrix);
         println!("k_inner {:?} \n pose {:?} ", k_inner, pose);
     }
 

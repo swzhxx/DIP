@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react'
-import House1 from '@/assets/image/1s.png'
-import House2 from '@/assets/image/2s.png'
+import House1 from '@/assets/image/1.png'
+import House2 from '@/assets/image/2.png'
 import { initImageElement, imageElementToImageData } from '@/utils/image'
 import { Slam } from '@/slam'
 

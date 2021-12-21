@@ -135,7 +135,7 @@ impl<'a> EightPoint<'_> {
         });
         let s = ((2. * len) / divisor).sqrt();
 
-        s * Array2::from_shape_vec(
+        Array2::from_shape_vec(
             (3, 3),
             vec![s, 0., -u_bar * s, 0., s, -v_bar * s, 0., 0., 1.],
         )

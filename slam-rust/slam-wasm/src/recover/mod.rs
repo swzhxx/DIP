@@ -1,6 +1,6 @@
 use std::{borrow::Borrow, cell::RefCell, clone, rc::Rc};
 
-use nalgebra::{coordinates, Matrix3, Vector3, Vector2};
+use nalgebra::{coordinates, Matrix3, Vector2, Vector3};
 use ndarray::{array, Array2, Axis};
 use nshare::{RefNdarray2, ToNalgebra};
 use slam_core::{
@@ -127,7 +127,7 @@ impl Recover3D {
             .iter()
             .map(|p| return (Vector3::new(p.2, p.3, p.4), Vector2::new(p.0, p.1)))
             .collect();
-        let (min, max, total) = points.iter().fold((0., 0., 0.), |prev, (p , uv)| {
+        let (min, max, total) = points.iter().fold((0., 0., 0.), |prev, (p, uv)| {
             let (mut min, mut max, mut total) = prev;
             let norm = p.norm();
             if min > norm {
@@ -143,12 +143,12 @@ impl Recover3D {
         web_sys::console::log_1(&format!("min {:?} max {:?} mean {:?}", min, max, mean).into());
         let points = points
             .into_iter()
-            .map(|(p , uv)| {
+            .map(|(p, uv)| {
                 let norm = p.norm();
                 let scale = norm / mean * (1. / mean);
-                (scale * normalize_scale_space * p , uv)
+                (scale * normalize_scale_space * p, uv)
             })
-            .fold(vec![], |mut acc, (p , uv)| {
+            .fold(vec![], |mut acc, (p, uv)| {
                 acc.push(p.x);
                 acc.push(p.y);
                 acc.push(p.z);
@@ -216,6 +216,8 @@ impl Recover3D {
                     .iter()
                     .map(|dmatch| curr_features[dmatch.i2].clone().f())
                     .collect();
+                web_sys::console::log_1(&format!("matches1.... {:?}", matches1).into());
+                web_sys::console::log_1(&format!("matches2....{:?}", matches2).into());
                 let fundamental =
                     EightPoint::new(&matches1, &matches2).normalize_find_fundamental();
                 if fundamental == None {
@@ -223,29 +225,27 @@ impl Recover3D {
                     return (None, None, None);
                 }
                 let fundamental = fundamental.unwrap();
-
+                // let fundamental = array![
+                //     [
+                //         4.544437503937326e-6,
+                //         0.0001333855576988952,
+                //         -0.01798499246457619
+                //     ],
+                //     [
+                //         -0.0001275657012959839,
+                //         2.266794804637672e-5,
+                //         -0.01416678429259694
+                //     ],
+                //     [0.01814994639952877, 0.004146055871509035, 1.]
+                // ];
                 // println!(" fundamental {:?}", fundamental);
                 let projection = get_projection_through_fundamental(&fundamental);
-                println!("projection {:?}", projection);
+
+                web_sys::console::log_1(&format!("projection....{:?}", projection).into());
                 let projection = projection.ref_ndarray2().to_owned();
                 *i.borrow_mut() = _i + 1;
                 (Some(ref_image), Some(curr_image), Some(projection))
-                // // let pose = restoration_perspective_structure(
-                // //     &fundamental.expect("fundamental faild"),
-                // //     &matches1,
-                // //     &matches2,
-                // //     None,
-                // // );
-                // // web_sys::console::log_1(&format!(" pose1  {:?}", &fundamental).into());
-                // let (mut a, b) = find_pose(&fundamental.expect("fundamental faild"));
-                // let b = array![b[[2, 1]], b[[0, 2]], b[[1, 0]]];
-
-                // a.push_column(b.view());
-                // let pose = a;
-                // web_sys::console::log_1(&format!(" pose2 {:?}", &pose).into());
-                // *i.borrow_mut() = _i + 1;
-                // return (Some(ref_image), Some(curr_image), Some(pose));
-            });
+             });
         let mut depth_filter = DepthFilter::new(
             &self.images,
             shape[0],

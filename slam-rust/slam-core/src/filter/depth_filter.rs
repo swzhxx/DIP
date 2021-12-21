@@ -322,12 +322,12 @@ impl<'a> DepthFilter<'a> {
         let P = triangulate
             .triangulate_relative(&projection, &pt_ref, &pt_curr)
             .unwrap();
-        let z_1 = P.x / pt_ref.x;
-        let z_2 = P.y / pt_ref.y;
-        let pz = (z_1 + z_2) / 2.;
+        // let z_1 = P.x / pt_ref.x;
+        // let z_2 = P.y / pt_ref.y;
+        // let pz = (z_1 + z_2) / 2.;
 
         self.pixel_3d_coordinate
-            .push((pt_ref.x, pt_ref.y, P.x, P.y,pz));
+            .push((pt_ref.x, pt_ref.y, P.x, P.y, P.z));
     }
 }
 
