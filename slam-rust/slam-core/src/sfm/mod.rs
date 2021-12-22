@@ -23,7 +23,7 @@ pub fn get_projection_through_fundamental(fundamental: &Array2<f64>) -> Matrix3x
 
     let less_eigen_vector = compute_min_vt_eigen_vector(&f_t);
     let less_eigen_vector = Vector3::from_vec(less_eigen_vector).normalize();
-    let less_eigen_vector = less_eigen_vector / less_eigen_vector.z;
+    // let less_eigen_vector = less_eigen_vector / less_eigen_vector.z;
     let b = array![
         [0., -less_eigen_vector[2], less_eigen_vector[1]],
         [less_eigen_vector[2], 0., -less_eigen_vector[0]],

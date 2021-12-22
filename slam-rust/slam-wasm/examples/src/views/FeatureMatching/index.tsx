@@ -45,7 +45,7 @@ export default (): JSX.Element => {
       return
     }
     let orb = new Slam.OrbFeatureMatcher(images[0], images[1])
-    orb.feature_point_matching(40, 40)
+    orb.feature_point_matching(40, 10)
     // let matching = Slam.feature_point_matching(images[0], images[1], 80)
 
     drawMathingResult(

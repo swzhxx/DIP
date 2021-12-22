@@ -62,11 +62,13 @@ impl<'a> DepthFilter<'a> {
         max_P_ref[3] = 1.;
 
         let P_ref_rt = P_ref.clone_owned();
-        let px_mean_curr = cam2px(&P_ref_rt.xyz(), &self.camera);
+        // let px_mean_curr = cam2px(&P_ref_rt.xyz(), &self.camera);
+        let px_mean_curr = Vector4::from_vec((&projection * P_ref).data.as_vec().to_vec());
+        let px_mean_curr = (px_mean_curr /  px_mean_curr.z).xy();
         let min_p_curr = Vector4::from_vec((&projection * min_P_ref).data.as_vec().to_vec());
-        let px_min_curr = (min_p_curr / min_p_curr.w / min_p_curr.z).xy();
+        let px_min_curr = (min_p_curr /  min_p_curr.z).xy();
         let max_p_curr = Vector4::from_vec((&projection * max_P_ref).data.as_vec().to_vec());
-        let px_max_curr = (max_p_curr / min_p_curr.w / max_p_curr.z).xy();
+        let px_max_curr = (max_p_curr /  max_p_curr.z).xy();
 
         // let px_min_curr = cam2px(
         //     &vector![min_f_ref_rt[0], min_f_ref_rt[1], min_f_ref_rt[2]],
@@ -80,8 +82,8 @@ impl<'a> DepthFilter<'a> {
         let epipolar_direction = epipolar_line.normalize();
         let mut half_length = 0.5 * epipolar_line.norm();
 
-        if half_length > 100. {
-            half_length = 100.;
+        if half_length > 600. {
+            half_length = 600.;
         }
         let mut best_ncc = -1.;
         let mut best_px_curr = vector![0., 0.];
@@ -404,20 +406,16 @@ mod test {
 
                 let fundamental = array![
                     [
-                        0.000005959949965227293,
-                        0.00009854717317892966,
-                        -0.02312085601749234
+                        4.544437503937326e-6,
+                        0.0001333855576988952,
+                        -0.01798499246457619
                     ],
                     [
-                        -0.00009791672201580511,
-                        0.00002077848996239076,
-                        0.023621935900711325
+                        -0.0001275657012959839,
+                        2.266794804637672e-5,
+                        -0.01416678429259694
                     ],
-                    [
-                        0.02076431274228595,
-                        -0.03206841094595729,
-                        0.9999999999999999
-                    ]
+                    [0.01814994639952877, 0.004146055871509035, 1.]
                 ];
 
                 let projection = get_projection_through_fundamental(&fundamental);

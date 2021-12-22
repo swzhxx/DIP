@@ -192,7 +192,7 @@ impl Recover3D {
         let i = RefCell::new(1);
         // let i_borrow_mut = i.borrow_mut();
 
-        let ref_features = OFast::new(ref_image).find_features(None);
+        let ref_features = OFast::new(ref_image).find_features(Some(40.));
         let ref_descriptors = Orb::new(ref_image, &ref_features).create_descriptors();
 
         let reader: Box<dyn for<'a> Fn(&'a Vec<Array2<f64>>) -> ReaderResult<'a>> =
@@ -204,7 +204,7 @@ impl Recover3D {
                     return (None, None, None);
                 }
                 let curr_image = &images[_i];
-                let curr_features = OFast::new(curr_image).find_features(None);
+                let curr_features = OFast::new(curr_image).find_features(Some(40.));
                 let curr_descriptors = Orb::new(curr_image, &curr_features).create_descriptors();
 
                 let mut matches = Orb::brief_match(&ref_descriptors, &curr_descriptors, 40);
@@ -225,19 +225,19 @@ impl Recover3D {
                     return (None, None, None);
                 }
                 let fundamental = fundamental.unwrap();
-                // let fundamental = array![
-                //     [
-                //         4.544437503937326e-6,
-                //         0.0001333855576988952,
-                //         -0.01798499246457619
-                //     ],
-                //     [
-                //         -0.0001275657012959839,
-                //         2.266794804637672e-5,
-                //         -0.01416678429259694
-                //     ],
-                //     [0.01814994639952877, 0.004146055871509035, 1.]
-                // ];
+                let fundamental = array![
+                    [
+                        4.544437503937326e-6,
+                        0.0001333855576988952,
+                        -0.01798499246457619
+                    ],
+                    [
+                        -0.0001275657012959839,
+                        2.266794804637672e-5,
+                        -0.01416678429259694
+                    ],
+                    [0.01814994639952877, 0.004146055871509035, 1.]
+                ];
                 // println!(" fundamental {:?}", fundamental);
                 let projection = get_projection_through_fundamental(&fundamental);
 
@@ -245,7 +245,7 @@ impl Recover3D {
                 let projection = projection.ref_ndarray2().to_owned();
                 *i.borrow_mut() = _i + 1;
                 (Some(ref_image), Some(curr_image), Some(projection))
-             });
+            });
         let mut depth_filter = DepthFilter::new(
             &self.images,
             shape[0],
