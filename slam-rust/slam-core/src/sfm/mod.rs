@@ -158,15 +158,15 @@ pub fn essential_decomposition(
     let essential = essential.clone().to_owned().into_nalgebra();
     let mut svd = essential.svd(true, true);
     sort_svd(&mut svd);
-    let W = Matrix3::from_vec(vec![0., 1., 0., -1., 0., 0., 0., 0., 0.]);
+    let W = Matrix3::from_vec(vec![0., -1., 0., 1., 0., 0., 0., 0., 1.]);
     let U = svd.u.unwrap();
     let Vt = svd.v_t.unwrap();
     // let Tx = U * Matrix3::from_vec(vec![1., 0., 0., 0., 1., 0., 0., 0., 0.]);
-    let R1 = &U * W.transpose() * Vt.transpose();
+    let R1 = &U * W * &Vt;
     let R1 = R1.determinant() * R1;
     let R1 = Matrix3::from_vec(R1.data.as_vec().clone());
 
-    let R2 = &U * W.transpose() * Vt.transpose();
+    let R2 = &U * W.transpose() * &Vt;
     let R2 = R2.determinant() * R2;
     let R2 = Matrix3::from_vec(R2.data.as_vec().clone());
 
@@ -318,17 +318,19 @@ mod test {
 
     use crate::sfm::{get_projection_through_fundamental, projection_decomposition};
 
-    use super::compute_projection_qr_decomposition;
+    use super::{compute_projection_qr_decomposition, essential_decomposition};
 
     // use crate::sfm::{find_pose, };
     #[test]
     fn test_find_pose() {
         let shape = [3, 3];
-        let fundamental = array![[ 2.79581382e-06, -7.78641696e-06, 5.09004126e-03],
-        [ 1.21599362e-05, -8.33557647e-07, 3.61811421e-03],
-        [-7.47814732e-03, -5.23955075e-03, 1.00000000e+00]];
+        let fundamental = array![
+            [2.79581382e-06, -7.78641696e-06, 5.09004126e-03],
+            [1.21599362e-05, -8.33557647e-07, 3.61811421e-03],
+            [-7.47814732e-03, -5.23955075e-03, 1.00000000e+00]
+        ];
         let projection_matrix = get_projection_through_fundamental(&fundamental);
-        
+
         // let projection_matrix = Matrix3x4::from_vec(vec![
         //     -7.48030043e-01,
         //     1.80474514e+0,
@@ -366,5 +368,40 @@ mod test {
         let (k, pose) = compute_projection_qr_decomposition(&p);
         println!("k {:?}", k);
         println!("pose{:?}", pose);
+    }
+
+    #[test]
+    // 520.9, 0, 325.1, 0, 521.0, 249.7, 0, 0, 1
+    // [4.544437503937326e-06, 0.0001333855576988952, -0.01798499246457619;
+    // -0.0001275657012959839, 2.266794804637672e-05, -0.01416678429258694;
+    // 0.01814994639952877, 0.004146055871509035, 1]
+    // essential_matrix is
+    // [0.01097677479889588, 0.2483720528328748, 0.03167429208264108;
+    // -0.2088833206116968, 0.02908423961947315, -0.674465883831914;
+    // 0.008286777626839029, 0.66140416240827, 0.01676523772760232]
+    // homography_matrix is
+    // [0.9261214281395963, -0.1445322024422802, 33.26921085290552;
+    // 0.04535424466077615, 0.9386696693994352, 8.570979963061975;
+    // -1.00619755759245e-05, -3.0081402779533e-05, 1]
+    // R is
+    // [0.9969387384756405, -0.0515557418857258, 0.05878058527448649;
+    // 0.05000441581116598, 0.9983685317362444, 0.02756507279509838;
+    // -0.06010582439317147, -0.02454140007064545, 0.9978902793176159]
+    // t is
+    // [-0.9350802885396324;
+    // -0.03514646277098749;
+    // 0.352689070059345]
+    // t^R=
+    // [-0.01552350379194682, -0.3512511256306389, -0.04479421344178829;
+    // 0.2954056249626309, -0.04113132612112196, 0.9538388002732133;
+    // -0.01171927330817152, -0.9353667366876339, -0.02370962657084997]
+    fn test_esstinal() {
+        let essential = array![
+            [0.01097677479889588, 0.2483720528328748, 0.03167429208264108],
+            [-0.2088833206116968, 0.02908423961947315, -0.674465883831914],
+            [0.008286777626839029, 0.66140416240827, 0.01676523772760232],
+        ];
+        let result = essential_decomposition(&essential);
+        println!("result {:?}", result)
     }
 }
