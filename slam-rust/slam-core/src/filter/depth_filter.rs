@@ -30,7 +30,8 @@ pub struct DepthFilter<'a> {
     // ref_image: Option<&'a Array2<f64>>,
     // current_image: Option<&'a Array2<f64>>, // images: Vec<Array2<f64>>,
     pub pixel_3d_coordinate: Vec<Pixel3dCoordinate>,
-    camera: Array2<f64>,
+    k1: &'a Array2<f64>,
+    k2: &'a Array2<f64>,
 }
 
 impl<'a> DepthFilter<'a> {
@@ -41,13 +42,16 @@ impl<'a> DepthFilter<'a> {
         pt_ref: &Array1<f64>,
         ref_image: &Array2<f64>,
         current_image: &Array2<f64>,
-        projection: &Array2<f64>,
+        pose: &Array2<f64>,
         depth: f64,
         depth_cov: f64,
     ) -> Option<(Vector2<f64>, Vector2<f64>)> {
-        let projection = projection.clone().into_nalgebra();
+        let mut k2 = self.k2.clone();
+        let mut a = (k2.dot(pose));
+        a.push(Axis(0), array![0., 0., 0., 1.].view());
+        let projection = a.into_nalgebra();
 
-        let f_ref = vector![pt_ref[0], pt_ref[1], 1.].normalize();
+        let f_ref = px2cam(&vector![pt_ref[0], pt_ref[1]], self.k1).normalize();
 
         let mut P_ref = (&f_ref * depth).to_homogeneous();
         P_ref[3] = 1.;
@@ -64,11 +68,11 @@ impl<'a> DepthFilter<'a> {
         let P_ref_rt = P_ref.clone_owned();
         // let px_mean_curr = cam2px(&P_ref_rt.xyz(), &self.camera);
         let px_mean_curr = Vector4::from_vec((&projection * P_ref).data.as_vec().to_vec());
-        let px_mean_curr = (px_mean_curr /  px_mean_curr.z).xy();
+        let px_mean_curr = (px_mean_curr / px_mean_curr.z).xy();
         let min_p_curr = Vector4::from_vec((&projection * min_P_ref).data.as_vec().to_vec());
-        let px_min_curr = (min_p_curr /  min_p_curr.z).xy();
+        let px_min_curr = (min_p_curr / min_p_curr.z).xy();
         let max_p_curr = Vector4::from_vec((&projection * max_P_ref).data.as_vec().to_vec());
-        let px_max_curr = (max_p_curr /  max_p_curr.z).xy();
+        let px_max_curr = (max_p_curr / max_p_curr.z).xy();
 
         // let px_min_curr = cam2px(
         //     &vector![min_f_ref_rt[0], min_f_ref_rt[1], min_f_ref_rt[2]],
@@ -119,13 +123,13 @@ impl<'a> DepthFilter<'a> {
     }
 
     pub fn excute(&mut self) {
-        let (ref_image, option_image, option_projection) = self.reader();
+        let (ref_image, option_image, option_pose) = self.reader();
 
-        if ref_image != None && option_image != None && option_projection != None {
+        if ref_image != None && option_image != None && option_pose != None {
             self.update(
                 ref_image.unwrap(),
                 option_image.unwrap(),
-                &option_projection.unwrap(),
+                &option_pose.unwrap(),
             );
             self.excute();
         }
@@ -140,6 +144,8 @@ impl<'a> DepthFilter<'a> {
         min_depth: Option<f64>,
         max_depth: Option<f64>,
         reader: Box<dyn Fn(&'a Vec<Array2<f64>>) -> ReaderResult<'a>>,
+        k1: &'a Array2<f64>,
+        k2: &'a Array2<f64>,
     ) -> Self {
         let depth_mean = match depth_mean {
             Some(val) => val,
@@ -166,9 +172,9 @@ impl<'a> DepthFilter<'a> {
             min_depth,
             max_depth,
             reader, // images,
-            // ref_image: None,
-            // current_image: None,
-            camera: array![[1., 0., 0.], [0., 1., 0.], [0., 0., 1.]],
+            k1,
+            k2,
+
             pixel_3d_coordinate: vec![],
         }
     }
@@ -183,12 +189,11 @@ impl<'a> DepthFilter<'a> {
         &mut self,
         ref_image: &Array2<f64>,
         current_image: &Array2<f64>,
-        projection: &Array2<f64>,
+        pose: &Array2<f64>,
     ) {
-        let mut projection = projection.clone().to_owned();
-        projection
-            .push(Axis(0), array![0., 0., 0., 1.].view())
-            .expect(&format!("projection {:?}", projection));
+        let mut pose = pose.clone().to_owned();
+        // pose.push(Axis(0), array![0., 0., 0., 1.].view())
+        //     .expect(&format!("pose {:?}", pose));
         let mut update_count = 0;
 
         for y in border..(self.height - border) {
@@ -201,14 +206,9 @@ impl<'a> DepthFilter<'a> {
                 let pt_ref = array![x as f64, y as f64];
                 let depth = self.depth_matrix[[y, x]];
                 let depth_cov = self.depth_cov2_matrix[[y, x]];
-                if let Some((pt_curr, epiploar_direction)) = self.epipolar_search(
-                    &pt_ref,
-                    ref_image,
-                    current_image,
-                    &projection,
-                    depth,
-                    depth_cov,
-                ) {
+                if let Some((pt_curr, epiploar_direction)) =
+                    self.epipolar_search(&pt_ref, ref_image, current_image, &pose, depth, depth_cov)
+                {
                     // // TODO: 更新深度图
                     // self.update_depth_filter(
                     //     &vector![x as f64, y as f64],
@@ -225,7 +225,7 @@ impl<'a> DepthFilter<'a> {
                     // let P = triangulate
                     //     .triangulate_relative(&projection, &pt_ref, &pt_curr)
                     //     .unwrap();
-                    self.update_depth_rlt(&pt_ref, &projection, &pt_curr);
+                    self.update_depth_rlt(&pt_ref, &pose, &pt_curr);
                     update_count = update_count + 1;
                     if update_count % 100 == 0 {
                         println!("update count ing {:?}", update_count);
@@ -308,7 +308,7 @@ impl<'a> DepthFilter<'a> {
     fn update_depth_rlt(
         &mut self,
         pt_ref: &Array1<f64>,
-        projection: &Array2<f64>,
+        pose: &Array2<f64>,
         pt_curr: &Vector2<f64>,
     ) {
         let triangulate = RelativeDltTriangulator::new();
@@ -316,17 +316,14 @@ impl<'a> DepthFilter<'a> {
         // ref_data.push(1.);
         let pt_ref = Vector2::from_vec(ref_data);
         // let pt_curr = pt_curr;
-        // let projection = Matrix3x4::from_vec(projection.to_owned().into_raw_vec());
-        let projection = projection.to_owned().into_nalgebra();
-        let projection = projection.slice((0, 0), (3, 4)).into_owned();
+        let k2 = self.k2.clone();
+        let mut a = (k2.dot(pose));
+        a.push(Axis(0), array![0., 0., 0., 1.].view());
+        let projection = a.into_nalgebra();
         let projection = Matrix3x4::from_vec(projection.data.as_vec().to_vec());
-
         let P = triangulate
             .triangulate_relative(&projection, &pt_ref, &pt_curr)
             .unwrap();
-        // let z_1 = P.x / pt_ref.x;
-        // let z_2 = P.y / pt_ref.y;
-        // let pz = (z_1 + z_2) / 2.;
 
         self.pixel_3d_coordinate
             .push((pt_ref.x, pt_ref.y, P.x, P.y, P.z));
@@ -362,7 +359,7 @@ mod test {
         features::fast::OFast,
         filter::depth_filter::ReaderResult,
         matches::orb::Orb,
-        sfm::{get_projection_through_fundamental, EightPoint},
+        sfm::{essential_decomposition, get_projection_through_fundamental, EightPoint},
     };
 
     use super::DepthFilter;
@@ -393,8 +390,10 @@ mod test {
         let images = vec![image_1_nd, image_2_nd];
         let mut i = RefCell::new(0);
 
-        // let ref_features = OFast::new(&images[0]).find_features(None);
-        // let ref_descriptors = Orb::new(&images[0], &ref_features).create_descriptors();
+        let ref_features = OFast::new(&images[0]).find_features(Some(40.));
+        let ref_descriptors = Orb::new(&images[0], &ref_features).create_descriptors();
+        let k = array![[520.9, 0., 325.1], [0., 521., 249.7], [0., 0., 1.]];
+        let k_clone = k.clone();
         let reader: Box<dyn for<'a> Fn(&'a Vec<Array2<f64>>) -> ReaderResult<'a>> =
             Box::new(move |images| {
                 let _i = *i.borrow();
@@ -404,20 +403,45 @@ mod test {
                 let ref_image = &images[0];
                 let curr_image = &images[1];
 
-                let fundamental = array![
-                    [
-                        4.544437503937326e-6,
-                        0.0001333855576988952,
-                        -0.01798499246457619
-                    ],
-                    [
-                        -0.0001275657012959839,
-                        2.266794804637672e-5,
-                        -0.01416678429259694
-                    ],
-                    [0.01814994639952877, 0.004146055871509035, 1.]
-                ];
+                let curr_features = OFast::new(&images[1]).find_features(Some(40.));
+                let curr_descriptors = Orb::new(&images[1], &curr_features).create_descriptors();
+                let matches = Orb::brief_match(&ref_descriptors, &curr_descriptors, 40);
+                let matches1 = matches
+                    .iter()
+                    .map(|dmatch| ref_features[dmatch.i1].clone().f())
+                    .collect();
+                let matches2 = matches
+                    .iter()
+                    .map(|dmatch| curr_features[dmatch.i2].clone().f())
+                    .collect();
+                let mut eight_point = EightPoint::new(&matches1, &matches2);
+                let esstinal = eight_point.normalize_find_esstinal().unwrap();
+                println!("esstinal... {:?}", esstinal);
 
+                let fundamental = eight_point.normalize_find_fundamental().unwrap();
+
+                println!("fundamental... {:?}", fundamental);
+                let pose = essential_decomposition(&esstinal);
+                println!("pose {:?}", pose);
+                let esstinal = (&k_clone).t().dot(&esstinal).dot(&k_clone);
+                let pose = essential_decomposition(&esstinal);
+                println!("esstinal 2 {:?}", esstinal);
+                println!("pose2 {:?}", pose);
+                // let fundamental = array![
+                //     [
+                //         4.544437503937326e-6,
+                //         0.0001333855576988952,
+                //         -0.01798499246457619
+                //     ],
+                //     [
+                //         -0.0001275657012959839,
+                //         2.266794804637672e-5,
+                //         -0.01416678429259694
+                //     ],
+                //     [0.01814994639952877, 0.004146055871509035, 1.]
+                // ];
+
+                todo!();
                 let projection = get_projection_through_fundamental(&fundamental);
                 println!(" projection {:?}", projection);
                 let projection = projection.ref_ndarray2().to_owned();
@@ -433,8 +457,10 @@ mod test {
             None,
             None,
             reader,
+            &k,
+            &k,
         );
         depth_filter.excute();
-        println!("depth_matrix {:?}", depth_filter.depth_matrix);
+        // println!("depth_matrix {:?}", depth_filter.depth_matrix);
     }
 }

@@ -6,7 +6,7 @@ use nalgebra::{
     ArrayStorage, Const, DMatrix, IsometryMatrix3, Matrix, Matrix1, Matrix3, Matrix3x4, Rotation3,
     Storage, Translation, Translation3, Vector2, Vector3, QR,
 };
-use ndarray::{array, Array1, Array2};
+use ndarray::{array, s, Array1, Array2};
 use nshare::{RefNdarray1, ToNalgebra, ToNdarray2};
 use num_traits::{Float, Pow};
 
@@ -189,7 +189,7 @@ pub fn find_pose_by_essential(
     // let k_identity = Matrix3::identity();
     // let k1 = k1.unwrap_or(&k_identity);
     // let k2 = k2.unwrap_or(&k_identity);
-    let vec_poses = vec![(R1, T1), (R2, T2), (R2, T1), (R2, T2)];
+    let vec_poses = vec![(R1, T1), (R2, T1), (R1, T2), (R2, T2)];
     let counts: Vec<usize> = vec_poses
         .iter()
         .map(|(R, T)| {
@@ -200,11 +200,10 @@ pub fn find_pose_by_essential(
                     let p2 = Vector2::new(p2.x, p2.y);
                     let triangulator = RelativeDltTriangulator::new();
 
-                    let relative_pose = IsometryMatrix3::from_parts(
-                        Translation3::from(T.clone()),
-                        Rotation3::from_matrix(R),
-                    )
-                    .to_homogeneous();
+                    let mut relative_pose = R.clone();
+                    let mut relative_pose = relative_pose.insert_column(3, 0.);
+
+                    relative_pose.column_mut(3).copy_from(T);
 
                     let relative_pose = relative_pose.slice((0, 0), (3, 4));
                     // let pose = k2 * &relative_pose;
@@ -219,7 +218,8 @@ pub fn find_pose_by_essential(
                     acc
                 } else {
                     let p = p.as_ref().unwrap();
-                    if p.z > 0. && p.z > T.z {
+                    let p2 = R * p + T;
+                    if p.z > 0. && p2.z > 0. {
                         acc + 1
                     } else {
                         acc
@@ -228,14 +228,23 @@ pub fn find_pose_by_essential(
             })
         })
         .collect();
-    let (max_index, _) = counts.iter().enumerate().max_by(|x, y| x.cmp(y)).unwrap();
+    let (max_index, _) = counts
+        .iter()
+        .enumerate()
+        .max_by(|x, y| x.1.cmp(y.1))
+        .unwrap();
     // vec_poses[max_index].to_owned()
     let (R, T) = &vec_poses[max_index];
     // let relative_pose = R.clone().to_owned().insert_fixed_rows(3, T.to_owned());
     let relative_pose =
         IsometryMatrix3::from_parts(Translation::from(T.clone()), Rotation3::from_matrix(R))
-            .to_homogeneous();
-    relative_pose.ref_ndarray2().to_owned()
+            .to_matrix();
+
+    relative_pose
+        .ref_ndarray2()
+        .to_owned()
+        .slice(s![0..3, ..])
+        .to_owned()
 }
 
 type MatchPoints<T> = Vec<Point2<T>>;
@@ -316,7 +325,12 @@ mod test {
     use ndarray::{array, Array2};
     use nshare::ToNalgebra;
 
-    use crate::sfm::{get_projection_through_fundamental, projection_decomposition};
+    use crate::{
+        point::Point2,
+        sfm::{
+            find_pose_by_essential, get_projection_through_fundamental, projection_decomposition,
+        },
+    };
 
     use super::{compute_projection_qr_decomposition, essential_decomposition};
 
@@ -402,6 +416,45 @@ mod test {
             [0.008286777626839029, 0.66140416240827, 0.01676523772760232],
         ];
         let result = essential_decomposition(&essential);
-        println!("result {:?}", result)
+        println!("result {:?}", result);
+        let p1s = [
+            (194, 32),
+            (162, 40),
+            (151, 50),
+            (208, 150),
+            (154, 194),
+            (194, 228),
+            (92, 232),
+            (403, 242),
+            (186, 262),
+            (339, 307),
+            (348, 308),
+            (401, 347),
+        ];
+        let p2s = [
+            (226, 44),
+            (193, 51),
+            (183, 60),
+            (208, 160),
+            (142, 200),
+            (180, 232),
+            (90, 234),
+            (376, 258),
+            (170, 266),
+            (236, 306),
+            (311, 317),
+            (357, 358),
+        ];
+        let p1s = p1s
+            .iter()
+            .map(|p| Point2::new(p.0 as f64, p.1 as f64))
+            .collect();
+        let p2s = p2s
+            .iter()
+            .map(|p| Point2::new(p.0 as f64, p.1 as f64))
+            .collect();
+
+        let pose = find_pose_by_essential(&essential, &p1s, &p2s);
+        println!("pose {:?}", pose);
     }
 }

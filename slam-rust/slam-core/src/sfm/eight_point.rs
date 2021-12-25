@@ -28,11 +28,13 @@ impl<'a> EightPoint<'_> {
     }
 
     /// 8点法计算基础矩阵
-    fn calc_fundamental(
+    fn calc(
         &self,
         points1: &Vec<Point3<f64>>,
         points2: &Vec<Point3<f64>>,
+        is_esstinal: Option<bool>,
     ) -> Option<Array2<f64>> {
+        let is_esstinal = is_esstinal.unwrap_or(false);
         let len = points1.len().min(points2.len());
         let f: Option<Array2<f64>> = None;
         if len < 8 {
@@ -70,6 +72,11 @@ impl<'a> EightPoint<'_> {
             sort_svd(&mut f_svd);
             // println!("f_svd {:?}", f_svd);
             f_svd.singular_values[2] = 0.;
+            if is_esstinal == true {
+                let mean = (f_svd.singular_values[0] + f_svd.singular_values[1]) / 2.;
+                f_svd.singular_values[0] = mean;
+                f_svd.singular_values[1] = mean;
+            }
 
             // println!("f_svd u {:?}", f_svd.u);
             // println!("f_svd v_t {:?}", f_svd.v_t);
@@ -92,11 +99,9 @@ impl<'a> EightPoint<'_> {
             .iter()
             .map(|p| p.homogeneous())
             .collect();
-        self.calc_fundamental(&points1, &points2)
+        self.calc(&points1, &points2, None)
     }
-
-    /// 归一化8点法计算基础矩阵
-    pub fn normalize_find_fundamental(&mut self) -> Option<Array2<f64>> {
+    fn compute_nomalize_matrix(&mut self, is_esstinal: Option<bool>) -> Option<Array2<f64>> {
         let points1 = &self.match_points_1;
         let points2 = &self.match_points_2;
         let h1 = self.get_normalize_translate_matrix(points1);
@@ -116,13 +121,21 @@ impl<'a> EightPoint<'_> {
         let normalize_points1 = build_normalize_points(&points1, &h1);
         let normalize_points2 = build_normalize_points(&points2, &h2);
 
-        if let Some(fundmatental) = self.calc_fundamental(&normalize_points1, &normalize_points2) {
+        if let Some(fundmatental) = self.calc(&normalize_points1, &normalize_points2, is_esstinal) {
             let f0 = h2.t().dot(&fundmatental).dot(&h1);
             let f0 = 1. / f0[[2, 2]] * f0;
             Some(f0)
         } else {
             None
         }
+    }
+    /// 归一化8点法计算基础矩阵
+    pub fn normalize_find_fundamental(&mut self) -> Option<Array2<f64>> {
+        self.compute_nomalize_matrix(None)
+    }
+
+    pub fn normalize_find_esstinal(&mut self) -> Option<Array2<f64>> {
+        self.compute_nomalize_matrix(Some(true))
     }
 
     fn get_normalize_translate_matrix(&self, points: &Vec<Point2<f64>>) -> Array2<f64> {
@@ -240,6 +253,8 @@ mod test {
         let fundamental = ep.find_fundamental();
         println!("fundamental matrix {:?}", fundamental);
     }
+    #[test]
+    fn fn_test_normliaze_esstinal() {}
 
     #[test]
 
