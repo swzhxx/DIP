@@ -210,7 +210,8 @@ pub fn find_pose_by_essential(
                     let pose =
                         Matrix3x4::from_vec(relative_pose.clone_owned().data.as_vec().to_vec());
                     // let pose = k2.to_owned() * relative_pose.to_homogeneous();
-                    triangulator.triangulate_relative(&pose, &p1, &p2)
+                    let pose1 = Matrix3x4::identity();
+                    triangulator.triangulate_relative(&pose1, &pose, &p1, &p2)
                 })
                 .collect();
             world_ps.iter().fold(0usize, |acc, p| {
@@ -416,7 +417,7 @@ mod test {
             [0.008286777626839029, 0.66140416240827, 0.01676523772760232],
         ];
         let result = essential_decomposition(&essential);
-        println!("result {:?}", result);
+        // println!("result {:?}", result);
         let p1s = [
             (194, 32),
             (162, 40),

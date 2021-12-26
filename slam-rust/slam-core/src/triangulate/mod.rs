@@ -109,25 +109,19 @@ impl Default for RelativeDltTriangulator {
 impl RelativeDltTriangulator {
     pub fn triangulate_relative(
         &self,
-        relative_pose: &Matrix3x4<f64>,
+        p1: &Matrix3x4<f64>,
+        p2: &Matrix3x4<f64>,
         a: &Vector2<f64>,
         b: &Vector2<f64>,
     ) -> Option<Vector3<f64>> {
-        let pose = relative_pose;
+        // let p2 = p2;
+
         let mut design: DMatrix<f64> = DMatrix::<f64>::zeros(4, 4);
-        let eye = Matrix3x4::identity();
-        design
-            .row_mut(0)
-            .copy_from(&(-eye.row(1) + a.y * eye.row(2)));
-        design
-            .row_mut(1)
-            .copy_from(&(eye.row(0) - a.x * eye.row(2)));
-        design
-            .row_mut(2)
-            .copy_from(&(-pose.row(1) + b.y * pose.row(2)));
-        design
-            .row_mut(3)
-            .copy_from(&(pose.row(0) - b.x * pose.row(2)));
+        // let eye = Matrix3x4::identity();
+        design.row_mut(0).copy_from(&(-p1.row(1) + a.y * p1.row(2)));
+        design.row_mut(1).copy_from(&(p1.row(0) - a.x * p1.row(2)));
+        design.row_mut(2).copy_from(&(-p2.row(1) + b.y * p2.row(2)));
+        design.row_mut(3).copy_from(&(p2.row(0) - b.x * p2.row(2)));
 
         // let design = DMatrix::cop
         let x = compute_min_vt_eigen_vector(&design);

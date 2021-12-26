@@ -51,7 +51,8 @@ impl<'a> DepthFilter<'a> {
         a.push(Axis(0), array![0., 0., 0., 1.].view());
         let projection = a.into_nalgebra();
 
-        let f_ref = px2cam(&vector![pt_ref[0], pt_ref[1]], self.k1).normalize();
+        let f_ref = px2cam(&vector![pt_ref[0], pt_ref[1]], self.k1);
+        let f_ref = f_ref.normalize();
 
         let mut P_ref = (&f_ref * depth).to_homogeneous();
         P_ref[3] = 1.;
@@ -86,8 +87,8 @@ impl<'a> DepthFilter<'a> {
         let epipolar_direction = epipolar_line.normalize();
         let mut half_length = 0.5 * epipolar_line.norm();
 
-        if half_length > 600. {
-            half_length = 600.;
+        if half_length > 100. {
+            half_length = 100.;
         }
         let mut best_ncc = -1.;
         let mut best_px_curr = vector![0., 0.];
@@ -319,14 +320,30 @@ impl<'a> DepthFilter<'a> {
         let k2 = self.k2.clone();
         let mut a = (k2.dot(pose));
         a.push(Axis(0), array![0., 0., 0., 1.].view());
-        let projection = a.into_nalgebra();
-        let projection = Matrix3x4::from_vec(projection.data.as_vec().to_vec());
-        let P = triangulate
-            .triangulate_relative(&projection, &pt_ref, &pt_curr)
-            .unwrap();
+        let p2 = a.into_nalgebra();
+        let p2 = p2.slice((0, 0), (3, 4)).into_owned();
+        let p2 = Matrix3x4::from_vec(p2.data.as_vec().to_vec());
+        let mut p1 = self.k1.to_owned();
+        p1.push_column(array![0., 0., 0.].view());
+        let p1 = p1.into_nalgebra();
+        let p1 = Matrix3x4::from_vec(p1.data.as_vec().to_vec());
 
+        let P = triangulate
+            .triangulate_relative(&p1, &p2, &pt_ref, &pt_curr)
+            .unwrap();
+        if P.z < 0. {
+            return;
+        }
         self.pixel_3d_coordinate
             .push((pt_ref.x, pt_ref.y, P.x, P.y, P.z));
+
+        // let real = p1 * P.to_homogeneous();
+        // let reala = real / real.z;
+
+        // let realb = p2 * P.to_homogeneous();
+        // let realb = realb / realb.z;
+        // println!("image1 a{:?}", reala);
+        // println!("image1 b{:?}", realb);
     }
 }
 
@@ -390,8 +407,8 @@ mod test {
         let images = vec![image_1_nd, image_2_nd];
         let mut i = RefCell::new(0);
 
-        let ref_features = OFast::new(&images[0]).find_features(Some(40.));
-        let ref_descriptors = Orb::new(&images[0], &ref_features).create_descriptors();
+        // let ref_features = OFast::new(&images[0]).find_features(Some(40.));
+        // let ref_descriptors = Orb::new(&images[0], &ref_features).create_descriptors();
         let k = array![[520.9, 0., 325.1], [0., 521., 249.7], [0., 0., 1.]];
         let k_clone = k.clone();
         let reader: Box<dyn for<'a> Fn(&'a Vec<Array2<f64>>) -> ReaderResult<'a>> =
@@ -403,30 +420,30 @@ mod test {
                 let ref_image = &images[0];
                 let curr_image = &images[1];
 
-                let curr_features = OFast::new(&images[1]).find_features(Some(40.));
-                let curr_descriptors = Orb::new(&images[1], &curr_features).create_descriptors();
-                let matches = Orb::brief_match(&ref_descriptors, &curr_descriptors, 40);
-                let matches1 = matches
-                    .iter()
-                    .map(|dmatch| ref_features[dmatch.i1].clone().f())
-                    .collect();
-                let matches2 = matches
-                    .iter()
-                    .map(|dmatch| curr_features[dmatch.i2].clone().f())
-                    .collect();
-                let mut eight_point = EightPoint::new(&matches1, &matches2);
-                let esstinal = eight_point.normalize_find_esstinal().unwrap();
-                println!("esstinal... {:?}", esstinal);
+                // let curr_features = OFast::new(&images[1]).find_features(Some(40.));
+                // let curr_descriptors = Orb::new(&images[1], &curr_features).create_descriptors();
+                // let matches = Orb::brief_match(&ref_descriptors, &curr_descriptors, 40);
+                // let matches1 = matches
+                //     .iter()
+                //     .map(|dmatch| ref_features[dmatch.i1].clone().f())
+                //     .collect();
+                // let matches2 = matches
+                //     .iter()
+                //     .map(|dmatch| curr_features[dmatch.i2].clone().f())
+                //     .collect();
+                // let mut eight_point = EightPoint::new(&matches1, &matches2);
+                // let esstinal = eight_point.normalize_find_esstinal().unwrap();
+                // println!("esstinal... {:?}", esstinal);
 
-                let fundamental = eight_point.normalize_find_fundamental().unwrap();
+                // let fundamental = eight_point.normalize_find_fundamental().unwrap();
 
-                println!("fundamental... {:?}", fundamental);
-                let pose = essential_decomposition(&esstinal);
-                println!("pose {:?}", pose);
-                let esstinal = (&k_clone).t().dot(&esstinal).dot(&k_clone);
-                let pose = essential_decomposition(&esstinal);
-                println!("esstinal 2 {:?}", esstinal);
-                println!("pose2 {:?}", pose);
+                // println!("fundamental... {:?}", fundamental);
+                // let pose = essential_decomposition(&esstinal);
+                // println!("pose {:?}", pose);
+                // let esstinal = (&k_clone).t().dot(&esstinal).dot(&k_clone);
+                // let pose = essential_decomposition(&esstinal);
+                // println!("esstinal 2 {:?}", esstinal);
+                // println!("pose2 {:?}", pose);
                 // let fundamental = array![
                 //     [
                 //         4.544437503937326e-6,
@@ -441,12 +458,32 @@ mod test {
                 //     [0.01814994639952877, 0.004146055871509035, 1.]
                 // ];
 
-                todo!();
-                let projection = get_projection_through_fundamental(&fundamental);
-                println!(" projection {:?}", projection);
-                let projection = projection.ref_ndarray2().to_owned();
+                // todo!();
+                // let projection = get_projection_through_fundamental(&fundamental);
+
+                // let pose = pose.ref_ndarray2().to_owned();
+                let pose = array![
+                    [
+                        0.9969387384756405,
+                        -0.0515557418857258,
+                        0.05878058527448649,
+                        -0.935080288539632
+                    ],
+                    [
+                        0.05000441581116598,
+                        0.9983685317362444,
+                        0.02756507279509838,
+                        -0.03514646277098749
+                    ],
+                    [
+                        -0.06010582439317147,
+                        -0.02454140007064545,
+                        0.9978902793176159,
+                        0.352689070059345
+                    ]
+                ];
                 *i.borrow_mut() = _i + 1;
-                (Some(ref_image), Some(curr_image), Some(projection))
+                (Some(ref_image), Some(curr_image), Some(pose))
             });
         let mut depth_filter = DepthFilter::new(
             &images,

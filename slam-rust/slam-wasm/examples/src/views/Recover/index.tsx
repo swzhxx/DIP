@@ -62,16 +62,16 @@ export default (): JSX.Element => {
         'Camera',
         0,
         0,
-        20,
-        new Vector3(0, 0, 0),
+        40,
+        new Vector3(0, 0, 1),
         scene
       )
-      camera.setPosition(new Vector3(0, 0, -4000))
+      camera.setPosition(new Vector3(0, 0, 0))
       // const camera = new FreeCamera('camera1', new Vector3(0, 0, -4000), scene)
       // camera.inputs.addMouseWheel()
       // camera.setTarget(Vector3.Zero())
       camera.attachControl(true)
-      
+
       var pcs = new PointsCloudSystem('pcs', 2, scene)
 
       var setPoint = function (

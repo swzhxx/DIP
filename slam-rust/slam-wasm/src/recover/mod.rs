@@ -146,7 +146,8 @@ impl Recover3D {
             .map(|(p, uv)| {
                 let norm = p.norm();
                 let scale = norm / mean * (1. / mean);
-                (scale * normalize_scale_space * p, uv)
+                //(scale * normalize_scale_space * p, uv)
+                (p, uv)
             })
             .fold(vec![], |mut acc, (p, uv)| {
                 acc.push(p.x);
@@ -195,6 +196,7 @@ impl Recover3D {
         let ref_features = OFast::new(ref_image).find_features(Some(40.));
         let ref_descriptors = Orb::new(ref_image, &ref_features).create_descriptors();
         let k = array![[520.9, 0., 325.1], [0., 521., 249.7], [0., 0., 1.]];
+        // let k = array![[1., 0., 0.], [0., 1., 0.], [0., 0., 1.]];
         let reader: Box<dyn for<'a> Fn(&'a Vec<Array2<f64>>) -> ReaderResult<'a>> =
             Box::new(move |images| {
                 web_sys::console::log_1(&format!("reader....").into());
@@ -218,39 +220,34 @@ impl Recover3D {
                     .collect();
                 web_sys::console::log_1(&format!("matches1.... {:?}", matches1).into());
                 web_sys::console::log_1(&format!("matches2....{:?}", matches2).into());
-                // let fundamental =
-                //     EightPoint::new(&matches1, &matches2).normalize_find_fundamental();
-                // if fundamental == None {
-                //     *i.borrow_mut() = _i + 1;
-                //     return (None, None, None);
-                // }
-                // let fundamental = fundamental.unwrap();
-                // let fundamental = array![
-                //     [
-                //         4.544437503937326e-6,
-                //         0.0001333855576988952,
-                //         -0.01798499246457619
-                //     ],
-                //     [
-                //         -0.0001275657012959839,
-                //         2.266794804637672e-5,
-                //         -0.01416678429259694
-                //     ],
-                //     [0.01814994639952877, 0.004146055871509035, 1.]
-                // ];
-                // println!(" fundamental {:?}", fundamental);
-                // let projection = get_projection_through_fundamental(&fundamental);
-
-                // web_sys::console::log_1(&format!("projection....{:?}", projection).into());
-                // let projection = projection.ref_ndarray2().to_owned();
 
                 let esstinal = EightPoint::new(&matches1, &matches2)
                     .normalize_find_esstinal()
                     .unwrap();
-                let projection = find_pose_by_essential(&esstinal, &matches1, &matches2);
-
+                let pose = find_pose_by_essential(&esstinal, &matches1, &matches2);
+                web_sys::console::log_1(&format!("pose....{:?}", pose).into());
+                let pose = array![
+                    [
+                        0.9969387384756405,
+                        -0.0515557418857258,
+                        0.05878058527448649,
+                        -0.935080288539632
+                    ],
+                    [
+                        0.05000441581116598,
+                        0.9983685317362444,
+                        0.02756507279509838,
+                        -0.03514646277098749
+                    ],
+                    [
+                        -0.06010582439317147,
+                        -0.02454140007064545,
+                        0.9978902793176159,
+                        0.352689070059345
+                    ]
+                ];
                 *i.borrow_mut() = _i + 1;
-                (Some(ref_image), Some(curr_image), Some(projection))
+                (Some(ref_image), Some(curr_image), Some(pose))
             });
         let mut depth_filter = DepthFilter::new(
             &self.images,
