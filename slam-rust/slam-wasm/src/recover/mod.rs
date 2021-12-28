@@ -224,6 +224,7 @@ impl Recover3D {
                 let esstinal = EightPoint::new(&matches1, &matches2)
                     .normalize_find_esstinal()
                     .unwrap();
+                web_sys::console::log_1(&format!("esstinal....{:?}", esstinal).into());
                 let pose = find_pose_by_essential(&esstinal, &matches1, &matches2);
                 web_sys::console::log_1(&format!("pose....{:?}", pose).into());
                 let pose = array![

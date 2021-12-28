@@ -58,18 +58,18 @@ export default (): JSX.Element => {
     const engine = new Engine(el, true)
     const createScene = (): Scene => {
       let scene = new Scene(engine)
-      var camera = new ArcRotateCamera(
-        'Camera',
-        0,
-        0,
-        40,
-        new Vector3(0, 0, 1),
-        scene
-      )
-      camera.setPosition(new Vector3(0, 0, 0))
-      // const camera = new FreeCamera('camera1', new Vector3(0, 0, -4000), scene)
-      // camera.inputs.addMouseWheel()
-      // camera.setTarget(Vector3.Zero())
+      // var camera = new ArcRotateCamera(
+      //   'Camera',
+      //   0,
+      //   0,
+      //   40,
+      //   new Vector3(0, 0, 1),
+      //   scene
+      // )
+      // camera.setPosition(new Vector3(0, 0, 0))
+      const camera = new FreeCamera('camera1', new Vector3(0, 0, 0), scene)
+      camera.inputs.addMouseWheel()
+      camera.setTarget(new Vector3(0, 0, 1))
       camera.attachControl(true)
 
       var pcs = new PointsCloudSystem('pcs', 2, scene)
@@ -81,7 +81,7 @@ export default (): JSX.Element => {
       ) {
         let z = points[i * 5 + 2]
         let x = points[i * 5]
-        let y = points[i * 5 + 1]
+        let y = -points[i * 5 + 1]
         let u = parseInt(points[i * 5 + 3] + '')
         let v = parseInt(points[i * 5 + 4] + '')
         let index = v * refImage.width + u
