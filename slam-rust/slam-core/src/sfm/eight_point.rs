@@ -122,8 +122,10 @@ impl<'a> EightPoint<'_> {
         let normalize_points2 = build_normalize_points(&points2, &h2);
 
         if let Some(fundmatental) = self.calc(&normalize_points1, &normalize_points2, is_esstinal) {
-            let f0 = h2.t().dot(&fundmatental).dot(&h1);
-            let f0 = 1. / f0[[2, 2]] * f0;
+            let mut f0 = h2.t().dot(&fundmatental).dot(&h1);
+            if !(is_esstinal.unwrap_or(false)) {
+                f0 = 1. / f0[[2, 2]] * f0;
+            }
             Some(f0)
         } else {
             None

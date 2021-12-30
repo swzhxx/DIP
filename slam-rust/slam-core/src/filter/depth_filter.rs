@@ -376,7 +376,10 @@ mod test {
         features::fast::OFast,
         filter::depth_filter::ReaderResult,
         matches::orb::Orb,
-        sfm::{essential_decomposition, get_projection_through_fundamental, EightPoint},
+        sfm::{
+            essential_decomposition, find_pose_by_essential, get_projection_through_fundamental,
+            EightPoint,
+        },
     };
 
     use super::DepthFilter;
@@ -409,7 +412,8 @@ mod test {
 
         // let ref_features = OFast::new(&images[0]).find_features(Some(40.));
         // let ref_descriptors = Orb::new(&images[0], &ref_features).create_descriptors();
-        let k = array![[520.9, 0., 325.1], [0., 521., 249.7], [0., 0., 1.]];
+        // let k = array![[520.9, 0., 325.1], [0., 521., 249.7], [0., 0., 1.]];
+        let k = array![[1., 0., 0.], [0., 1., 0.], [0., 0., 1.]];
         let k_clone = k.clone();
         let reader: Box<dyn for<'a> Fn(&'a Vec<Array2<f64>>) -> ReaderResult<'a>> =
             Box::new(move |images| {
@@ -462,26 +466,67 @@ mod test {
                 // let projection = get_projection_through_fundamental(&fundamental);
 
                 // let pose = pose.ref_ndarray2().to_owned();
-                let pose = array![
+                // let pose = array![
+                //     [
+                //         0.9969387384756405,
+                //         -0.0515557418857258,
+                //         0.05878058527448649,
+                //         -0.935080288539632
+                //     ],
+                //     [
+                //         0.05000441581116598,
+                //         0.9983685317362444,
+                //         0.02756507279509838,
+                //         -0.03514646277098749
+                //     ],
+                //     [
+                //         -0.06010582439317147,
+                //         -0.02454140007064545,
+                //         0.9978902793176159,
+                //         0.352689070059345
+                //     ]
+                // ];
+
+                let esstinal = array![
                     [
-                        0.9969387384756405,
-                        -0.0515557418857258,
-                        0.05878058527448649,
-                        -0.935080288539632
+                        0.000000585105790857694,
+                        0.000011249614342526124,
+                        -0.0025480186158982495
                     ],
                     [
-                        0.05000441581116598,
-                        0.9983685317362444,
-                        0.02756507279509838,
-                        -0.03514646277098749
+                        -0.000011410647773199597,
+                        0.0000016136815390613431,
+                        -0.005129087538204289
                     ],
                     [
-                        -0.06010582439317147,
-                        -0.02454140007064545,
-                        0.9978902793176159,
-                        0.352689070059345
+                        0.002753399974485323,
+                        0.0039011336948751854,
+                        0.17337887136830776
                     ]
                 ];
+                let possible_pose = essential_decomposition(&esstinal);
+                println!("possible_pose {:?}" , possible_pose);
+                let pose = array![
+                    [
+                        0.724723990165523,
+                        -0.46703565610168496,
+                        -0.5066091531034868,
+                        0.8627507363756032,
+                    ],
+                    [
+                        -0.4626867058109289,
+                        0.21496518013251353,
+                        -0.8600645229262913,
+                        -0.5056243409843191,
+                    ],
+                    [
+                        0.5105841266083334,
+                        0.8577107130380639,
+                        -0.06030076612564896,
+                        -0.0022787469203856547,
+                    ],
+                ];
+                println!("esstinal pose {:?}", pose);
                 *i.borrow_mut() = _i + 1;
                 (Some(ref_image), Some(curr_image), Some(pose))
             });

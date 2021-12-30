@@ -37,11 +37,13 @@
 的部分内容
 
 ```
-cd dipwasm 
+cd dipwasm
 cd www
-npm install 
+npm install
 npm run start
 ```
 
-三期计划：
-三维重建
+三期：三维重建
+参考视频:
+[SLAM 十四讲](https://www.bilibili.com/video/BV1Xp4y167HM?spm_id_from=333.999.0.0)
+[计算机视觉三维重建](https://www.bilibili.com/video/BV15f4y1v7pa?spm_id_from=333.999.0.0)
