@@ -1,4 +1,5 @@
-class PhoneMaterial extends Material {
+
+class PhongMaterial extends Material {
   constructor(color, colorMap, specular, intensity) {
     let textureSample = 0
     if (colorMap != null) {
