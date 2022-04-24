@@ -10,3 +10,4 @@ slam/*/**/build/**/*
 /build/**
 slam-rust/target/**
 slam-rust/slam-core/target/**
+cv-3d/target/*
