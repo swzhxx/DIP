@@ -8,5 +8,8 @@ version = "0.1.0"
 [[example]]
 name = "nalgebra_test"
 
+[[example]]
+name = "lab1"
+
 [dependencies]
 nalgebra = "0.30.1"
