@@ -51,15 +51,29 @@ impl FeatureProcess for SiftFeatureProcess {
 
 /// 处理特征点和Desc。获取
 struct FeaturePointMatchBuilder<'a> {
+    matches: Vec<DMatch>,
     desc1: &'a cv::core::Mat,
     desc2: &'a cv::core::Mat,
+    key_points_1: &'a Vector<KeyPoint>,
+    key_points_2: &'a Vector<KeyPoint>,
 }
 
-impl FeaturePointMatchBuilder<'_> {
-    fn new<'a>(desc1: &'a cv::core::Mat, desc2: &'a cv::core::Mat) -> Self {
-        Self { desc1, desc2 }
+impl<'a> FeaturePointMatchBuilder<'a> {
+    fn new(
+        desc1: &'a cv::core::Mat,
+        desc2: &'a cv::core::Mat,
+        key_points_1: &'a Vector<KeyPoint>,
+        key_points_2: &'a Vector<KeyPoint>,
+    ) -> Self {
+        Self {
+            desc1,
+            desc2,
+            matches: Default::default(),
+            key_points_1,
+            key_points_2,
+        }
     }
-    fn get_matches(&self, ratio: f32) -> Result<Vec<DMatch>> {
+    fn compute_matches(&mut self, ratio: f32) -> Result<()> {
         let bf = cv::features2d::BFMatcher::create(cv::core::NORM_L2, false)?;
         let mut dmatches: Vector<Vector<DMatch>> = Vector::default();
         bf.knn_train_match(
@@ -78,7 +92,18 @@ impl FeaturePointMatchBuilder<'_> {
                 goods.push(m);
             }
         }
-        Ok(goods)
+        self.matches = goods;
+        Ok(())
+    }
+
+    fn get_matching_keypoint_pair(&self) -> Vec<(KeyPoint, KeyPoint)> {
+        let mut pairs: Vec<(KeyPoint, KeyPoint)> = vec![];
+        for m in &self.matches {
+            let query_point = self.key_points_1.get(m.query_idx as usize).unwrap();
+            let train_point = self.key_points_1.get(m.train_idx as usize).unwrap();
+            pairs.push((query_point, train_point));
+        }
+        pairs
     }
 }
 
@@ -94,6 +119,6 @@ fn main() -> Result<()> {
     let mut sift2 = SiftFeatureProcess::new(img2);
     sift2.extract_features()?;
 
-    let feature_point_match_builder = FeaturePointMatchBuilder::new(&sift1.desc, &sift2.desc);
+    // let feature_point_match_builder = FeaturePointMatchBuilder::new(&sift1.desc, &sift2.desc);
     Ok(())
 }
