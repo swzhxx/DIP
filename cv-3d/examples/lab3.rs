@@ -1,5 +1,6 @@
 use anyhow::Result;
 
+use nalgebra::{Const, DMatrix, DVector, Dynamic, Matrix3, Vector3};
 use opencv::core::{DMatch, KeyPoint, Vector};
 use opencv::{self as cv, prelude::*};
 trait FeatureProcess {
@@ -109,16 +110,100 @@ impl<'a> FeaturePointMatchBuilder<'a> {
 
 struct FundamentalBuilder {}
 
+impl FundamentalBuilder {
+    fn get_fundamental_matrix(pair_key_points: &Vec<(KeyPoint, KeyPoint)>) -> DMatrix<f32> {
+        let pts1: Vec<&KeyPoint> = pair_key_points.iter().map(|(kp, _)| return kp).collect();
+        let pts2: Vec<&KeyPoint> = pair_key_points.iter().map(|(_, kp)| return kp).collect();
+        let n_pts1 = Self::normalize(&pts1);
+        let n_pts2 = Self::normalize(&pts2);
+
+        let mut w = DMatrix::from_element(pts1.len(), 9, 0.);
+        for i in 0..n_pts1.len() {
+            let pt1 = n_pts1[i];
+            let pt2 = n_pts2[i];
+
+            let row = DVector::from_vec(vec![
+                pt1.x * pt2.x,
+                pt1.x * pt2.y,
+                pt1.x,
+                pt1.y * pt2.x,
+                pt1.y * pt2.y,
+                pt1.x,
+                pt2.x,
+                pt1.y,
+                1.,
+            ]);
+            // let row = DVector::from_vec(vec![
+            //     pt1.x * pt2.x,
+            //     pt1.y * pt2.x,
+            //     pt2.x,
+            //     pt1.x * pt2.y,
+            //     pt1.y * pt2.y,
+            //     pt2.y,
+            //     pt1.x,
+            //     pt1.y,
+            //     1.,
+            // ]);
+            w.row_mut(i).copy_from(&row.transpose());
+        }
+        let svd = w.svd(true, true);
+        let v_t = svd.v_t.unwrap();
+
+        let mut f = v_t
+            .column(v_t.shape().1 - 1)
+            .clone_owned()
+            .reshape_generic(Dynamic::new(3), Dynamic::new(3))
+            .transpose();
+        let mut svd = f.svd(true, true);
+        println!("svd singular_values {:?}", svd.singular_values);
+        *(svd.singular_values.get_mut(2).unwrap()) = 0.;
+        let f = svd.recompose().unwrap();
+        f
+    }
+    fn normalize(pts: &Vec<&KeyPoint>) -> Vec<Vector3<f32>> {
+        let (u, v) = pts.iter().fold((0., 0.), |(mut sumx, mut sumy), kp| {
+            sumx += kp.pt.x;
+            sumy += kp.pt.y;
+            (sumx, sumy)
+        });
+        let len = pts.len();
+        let total_offset = pts
+            .iter()
+            .fold(0., |acc, item| {
+                (item.pt.x - u).powf(2.) + (item.pt.y - v).powf(2.)
+            })
+            .sqrt();
+        let s = (2. as f32).sqrt() * (len as f32) / total_offset;
+        let T = Matrix3::new(s, 0., -u * s, -0., s, -v * s, 0., 0., 1.);
+        let pts: Vec<Vector3<f32>> = pts
+            .iter()
+            .map(|kp| Vector3::new(kp.pt.x, kp.pt.y, 1.))
+            .map(|pt| return T * pt)
+            .map(|pt| pt / *pt.get(2).unwrap())
+            .collect();
+        pts
+    }
+}
+
 struct HomographyBuilder {}
 
 fn main() -> Result<()> {
-    let img = cv::imgcodecs::imread("./DSC_0480.jpg", cv::imgcodecs::IMREAD_COLOR)?;
-    let img2 = cv::imgcodecs::imread("./DSC_0481.jpg", cv::imgcodecs::IMREAD_COLOR)?;
+    let img = cv::imgcodecs::imread("./DSC_0480.jpg", cv::imgcodecs::IMREAD_GRAYSCALE)?;
+    let img2 = cv::imgcodecs::imread("./DSC_0481.jpg", cv::imgcodecs::IMREAD_GRAYSCALE)?;
     let mut sift1 = SiftFeatureProcess::new(img);
     sift1.extract_features()?;
     let mut sift2 = SiftFeatureProcess::new(img2);
     sift2.extract_features()?;
 
-    // let feature_point_match_builder = FeaturePointMatchBuilder::new(&sift1.desc, &sift2.desc);
+    let mut feature_point_match_builder = FeaturePointMatchBuilder::new(
+        &sift1.desc,
+        &sift2.desc,
+        &sift1.key_points,
+        &sift2.key_points,
+    );
+    feature_point_match_builder.compute_matches(0.6)?;
+    let good_pair_match_points = feature_point_match_builder.get_matching_keypoint_pair();
+    let fundamental_matrix = FundamentalBuilder::get_fundamental_matrix(&good_pair_match_points);
+    println!("fundamental_matrix {}", fundamental_matrix);
     Ok(())
 }
