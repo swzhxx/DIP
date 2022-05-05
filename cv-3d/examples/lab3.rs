@@ -165,7 +165,8 @@ impl FundamentalBuilder {
         *(svd.singular_values.get_mut(2).unwrap()) = 0.;
         let f = svd.recompose().unwrap();
         let f = (T2.transpose() * &f) * &T1;
-        f
+        // 这里按照f(2,2)进行处理是正确的吗?
+        f / *f.get((2, 2)).unwrap()
     }
     fn normalize(pts: &Vec<&KeyPoint>) -> (Vec<Vector3<f32>>, Matrix3<f32>) {
         let (u, v) = pts.iter().fold((0., 0.), |(mut sumx, mut sumy), kp| {
@@ -237,7 +238,7 @@ fn main() -> Result<()> {
         let pt1 = Vector3::new(pt1.pt.x, pt1.pt.y, 1.);
         let pt2 = Vector3::new(pt2.pt.x, pt2.pt.y, 1.);
         let d = pt2.transpose() * &fundamental_matrix * &pt1;
-        println!("d {}", d);
+        // println!("d {}", d);
     }
     Ok(())
 }
