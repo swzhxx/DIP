@@ -1,7 +1,7 @@
 use anyhow::{anyhow, Result};
 
 use cv::core::Point2f;
-use nalgebra::{Const, DMatrix, DVector, Dynamic, Matrix3, Vector2, Vector3};
+use nalgebra::{Const, DMatrix, DVector, Dynamic, Matrix3, Matrix3x4, Vector2, Vector3};
 use ndarray::ArrayView3;
 use opencv::core::{DMatch, KeyPoint, Vector};
 use opencv::{self as cv, prelude::*};
@@ -112,10 +112,11 @@ impl<'a> FeaturePointMatchBuilder<'a> {
     }
 }
 
-struct FundamentalBuilder {}
+#[derive(Debug, Clone)]
+struct Fundamental(Matrix3<f32>);
 
-impl FundamentalBuilder {
-    fn get_fundamental_matrix(pair_key_points: &Vec<(KeyPoint, KeyPoint)>) -> Matrix3<f32> {
+impl Fundamental {
+    fn get_fundamental_matrix(pair_key_points: &Vec<(KeyPoint, KeyPoint)>) -> Self {
         let pts1: Vec<&KeyPoint> = pair_key_points.iter().map(|(kp, _)| return kp).collect();
         let pts2: Vec<&KeyPoint> = pair_key_points.iter().map(|(_, kp)| return kp).collect();
         let (n_pts1, T1) = Self::normalize(&pts1);
@@ -166,7 +167,7 @@ impl FundamentalBuilder {
         let f = svd.recompose().unwrap();
         let f = (T2.transpose() * &f) * &T1;
         // 这里按照f(2,2)进行处理是正确的吗?
-        f / *f.get((2, 2)).unwrap()
+        Self(f / *f.get((2, 2)).unwrap())
     }
     fn normalize(pts: &Vec<&KeyPoint>) -> (Vec<Vector3<f32>>, Matrix3<f32>) {
         let (u, v) = pts.iter().fold((0., 0.), |(mut sumx, mut sumy), kp| {
@@ -194,6 +195,19 @@ impl FundamentalBuilder {
     }
 }
 
+impl Fundamental {
+    fn to_esstianl_matrix(k: Matrix3<f32>) {
+        todo!()
+    }
+}
+
+struct Essential(Matrix3<f32>);
+impl Essential {
+    fn decompose_r_t() -> Matrix3x4<f32> {
+        todo!()
+    }
+}
+
 struct HomographyBuilder {}
 
 fn main() -> Result<()> {
@@ -213,8 +227,8 @@ fn main() -> Result<()> {
     feature_point_match_builder.compute_matches(0.6)?;
     let good_pair_match_points = feature_point_match_builder.get_matching_keypoint_pair();
     println!("good_pair_match_points {}", good_pair_match_points.len());
-    let fundamental_matrix = FundamentalBuilder::get_fundamental_matrix(&good_pair_match_points);
-    println!("fundamental_matrix {}", fundamental_matrix);
+    let fundamental_matrix = Fundamental::get_fundamental_matrix(&good_pair_match_points);
+    println!("fundamental_matrix {}", fundamental_matrix.0);
     // let fundamental_matrix = cv::calib3d::find_fundamental_mat(
     //     &good_pair_match_points
     //         .iter()
@@ -242,3 +256,6 @@ fn main() -> Result<()> {
     }
     Ok(())
 }
+
+#[cfg(test)]
+mod test {}
