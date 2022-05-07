@@ -1,7 +1,10 @@
 use anyhow::{anyhow, Result};
 
 use cv::core::Point2f;
-use nalgebra::{Const, DMatrix, DVector, Dynamic, Matrix3, Matrix3x4, Vector2, Vector3};
+use cv_3d::{triangluate::RelativeDltTriangulator, ToNaVector2};
+use nalgebra::{
+    vector, Const, DMatrix, DVector, Dynamic, Matrix3, Matrix3x1, Matrix3x4, Vector2, Vector3,
+};
 use ndarray::ArrayView3;
 use opencv::core::{DMatch, KeyPoint, Vector};
 use opencv::{self as cv, prelude::*};
@@ -196,15 +199,104 @@ impl Fundamental {
 }
 
 impl Fundamental {
-    fn to_esstianl_matrix(k: Matrix3<f32>) {
-        todo!()
+    /// [本质矩阵分解推导](https://blog.csdn.net/kokerf/article/details/72911561)
+    fn to_esstianl_matrix(&self, k: &Matrix3<f32>, k2: Option<&Matrix3<f32>>) -> Essential {
+        let k2 = k2.unwrap_or(k);
+
+        Essential::new(self, k, k2)
     }
 }
 
-struct Essential(Matrix3<f32>);
+#[derive(Debug, Clone)]
+struct Essential {
+    k1: Matrix3<f32>,
+    k2: Matrix3<f32>,
+    f: Fundamental,
+    pub e: Matrix3<f32>,
+}
 impl Essential {
-    fn decompose_r_t() -> Matrix3x4<f32> {
-        todo!()
+    fn new(f: &Fundamental, k1: &Matrix3<f32>, k2: &Matrix3<f32>) -> Self {
+        let E = k2.transpose() * &(f.0) * k1;
+        Self {
+            k1: k1.clone_owned(),
+            k2: k2.clone_owned(),
+            f: f.clone(),
+            e: E,
+        }
+    }
+
+    // 分解本质矩阵，得到可能的4个解
+    fn decompose_possible_R_T(
+        &self,
+    ) -> (
+        (Matrix3<f32>, Matrix3<f32>),
+        (Matrix3x1<f32>, Matrix3x1<f32>),
+    ) {
+        let W = Matrix3::new(0., -1., 0., 1., 0., 0., 0., 0., 1.);
+        let svd = self.e.svd(true, true);
+        let U = svd.u.unwrap();
+        let V_T = svd.v_t.unwrap();
+
+        let R1 = U * &W * &V_T;
+        let R1 = R1.determinant() * &R1;
+
+        let R2 = U * &W.transpose() * &V_T;
+        let R2 = R2.determinant() * &R2;
+
+        let T1 = 1. * &U.column(2);
+        let T2 = -1. * &T1;
+        return ((R1, R2), (T1, T2));
+    }
+
+    // 分解本质矩阵，根据匹配的特征点，得到R，T
+    fn find_R_T(
+        &self,
+        pair_match_points: &Vec<(KeyPoint, KeyPoint)>,
+        count_point: Option<usize>,
+    ) -> (Matrix3<f32>, Matrix3x1<f32>) {
+        let ((R1, R2), (T1, T2)) = self.decompose_possible_R_T();
+        let possible_r_t = vec![(R1, T1), (R1, T2), (R2, T1), (R2, T2)];
+        let pair_points: Vec<(Vector2<f32>, Vector2<f32>)> = pair_match_points
+            .iter()
+            .map(|(kp1, kp2)| {
+                let pt1 = kp1.to_vector2();
+                let pt2 = kp2.to_vector2();
+                return (pt1, pt2);
+            })
+            .collect();
+        // 三角化判断是否深度为正数最多的那个组合
+        let counts = possible_r_t
+            .iter()
+            .map(|(R, T)| {
+                let mut p1 = self.k1.clone();
+                p1.insert_column(3, 0.);
+                p1.column_mut(3).copy_from(&vector![0., 0., 1.]);
+                let p1 = Matrix3x4::from_vec(p1.as_slice().to_vec());
+
+                let mut p2 = R.clone();
+                p2.insert_column(3, 0.);
+                p2.column_mut(3).copy_from(T);
+                p2 = self.k2 * &p2;
+                let p2 = Matrix3x4::from_vec(p2.as_slice().to_vec());
+
+                (&pair_points).iter().fold(0u32, |acc, (pt1, pt2)| {
+                    let wp =
+                        RelativeDltTriangulator::triangluate_relative(&p1, &p2, pt1, pt2).unwrap();
+                    if wp.z > 0. {
+                        acc + 1
+                    } else {
+                        acc
+                    }
+                })
+            })
+            .collect::<Vec<u32>>();
+        let (max_index, _) = counts
+            .iter()
+            .enumerate()
+            .max_by(|x, y| x.1.cmp(y.1))
+            .unwrap();
+
+        return possible_r_t[max_index];
     }
 }
 
@@ -229,33 +321,34 @@ fn main() -> Result<()> {
     println!("good_pair_match_points {}", good_pair_match_points.len());
     let fundamental_matrix = Fundamental::get_fundamental_matrix(&good_pair_match_points);
     println!("fundamental_matrix {}", fundamental_matrix.0);
-    // let fundamental_matrix = cv::calib3d::find_fundamental_mat(
-    //     &good_pair_match_points
-    //         .iter()
-    //         .map(|(kp, _)| Point2f::new(kp.pt.x, kp.pt.y))
-    //         .collect::<Vector<Point2f>>(),
-    //     &good_pair_match_points
-    //         .iter()
-    //         .map(|(_, kp)| Point2f::new(kp.pt.x, kp.pt.y))
-    //         .collect::<Vector<Point2f>>(),
-    //     cv::calib3d::FM_8POINT,
-    //     0.,
-    //     0.,
-    //     10,
-    //     &mut cv::core::Mat::default(),
-    // )?;
-    for i in 0..good_pair_match_points.len() {
-        let (pt1, pt2) = good_pair_match_points[i];
-        // let pt1 = pt1.pt;
-        // let pt2 = pt2.pt;
-        // let d = pt2.mul(&fundamental_matrix).mul(&pt1);
-        let pt1 = Vector3::new(pt1.pt.x, pt1.pt.y, 1.);
-        let pt2 = Vector3::new(pt2.pt.x, pt2.pt.y, 1.);
-        let d = pt2.transpose() * &fundamental_matrix * &pt1;
-        // println!("d {}", d);
-    }
+
     Ok(())
 }
 
 #[cfg(test)]
-mod test {}
+mod test {
+    use nalgebra::Matrix3;
+
+    use crate::Essential;
+
+    #[test]
+    fn test_esstinal_decompose_possible() {
+        let esstinal = Matrix3::new(
+            0.01097677479889588,
+            0.2483720528328748,
+            0.03167429208264108,
+            -0.2088833206116968,
+            0.02908423961947315,
+            -0.674465883831914,
+            0.008286777626839029,
+            0.66140416240827,
+            0.01676523772760232,
+        );
+        let esstinal = Essential(esstinal);
+        let result = esstinal.decompose_possible_R_T();
+        println!("R1 {}", (result.0).0);
+        println!("R2 {}", (result.0).1);
+        println!("T1 {}", (result.1).0);
+        println!("T2 {}", (result.1).1);
+    }
+}
