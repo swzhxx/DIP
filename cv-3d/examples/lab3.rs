@@ -270,7 +270,7 @@ impl Essential {
             .map(|(R, T)| {
                 let mut p1 = self.k1.clone();
                 p1.insert_column(3, 0.);
-                p1.column_mut(3).copy_from(&vector![0., 0., 1.]);
+                p1.column_mut(3).copy_from(&vector![0., 0., 0.]);
                 let p1 = Matrix3x4::from_vec(p1.as_slice().to_vec());
 
                 let mut p2 = R.clone();

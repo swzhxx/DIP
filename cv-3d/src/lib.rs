@@ -1,8 +1,8 @@
 use nalgebra::Vector2;
 use opencv::core::KeyPoint;
 
+pub mod block_match;
 pub mod triangluate;
-
 pub trait ToNaVector2 {
     fn to_vector2(&self) -> Vector2<f32>;
 }
