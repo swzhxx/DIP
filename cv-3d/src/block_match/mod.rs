@@ -34,17 +34,23 @@ impl BlockMatch for Ncc {
         let ncc_window_size = self.ncc_window_size.unwrap_or(3);
         let block1 = image1.slice(
             (
-                (pt1.x - ncc_window_size / 2) as usize,
-                (pt1.y - ncc_window_size / 2) as usize,
+                (pt1.x - ncc_window_size) as usize,
+                (pt1.y - ncc_window_size) as usize,
             ),
-            (ncc_window_size as usize, ncc_window_size as usize),
+            (
+                (2 * ncc_window_size + 1) as usize,
+                (2 * ncc_window_size + 1) as usize,
+            ),
         );
         let block2 = image2.slice(
             (
-                (pt2.x - ncc_window_size / 2) as usize,
-                (pt2.y - ncc_window_size / 2) as usize,
+                (pt2.x - ncc_window_size) as usize,
+                (pt2.y - ncc_window_size) as usize,
             ),
-            (ncc_window_size as usize, ncc_window_size as usize),
+            (
+                (2 * ncc_window_size + 1) as usize,
+                (2 * ncc_window_size + 1) as usize,
+            ),
         );
         let block1_mean = block1.mean();
         let block2_mean = block2.mean();
