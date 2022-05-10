@@ -1,12 +1,16 @@
-use nalgebra::{Matrix3, Matrix3x4, Vector2, Vector3};
+use nalgebra::{DMatrix, Matrix3, Matrix3x4, Vector2, Vector3};
 
 use crate::{
+    block_match::{BlockMatch, Ncc},
     frame::Frame,
     utils::{cam2px, px2cam},
 };
 
 #[derive(Debug)]
-pub struct EpipolarSearch<'a> {
+pub struct EpipolarSearch<'a, BlockMatcher>
+where
+    BlockMatcher: BlockMatch,
+{
     current_frame: &'a Frame<'a>,
     next_frame: &'a Frame<'a>,
     k1: &'a Matrix3<f32>,
@@ -14,9 +18,13 @@ pub struct EpipolarSearch<'a> {
     current_r_t: &'a Matrix3x4<f32>,
     ref_r_t: &'a Matrix3x4<f32>,
     cov_value: f32,
+    block_matcher: &'a BlockMatcher,
 }
 
-impl<'a> EpipolarSearch<'a> {
+impl<'a, BlockMatcher> EpipolarSearch<'a, BlockMatcher>
+where
+    BlockMatcher: BlockMatch,
+{
     pub fn new(
         current_frame: &'a Frame,
         next_frame: &'a Frame,
@@ -25,6 +33,7 @@ impl<'a> EpipolarSearch<'a> {
         current_r_t: &'a Matrix3x4<f32>,
         ref_r_t: &'a Matrix3x4<f32>,
         cov_value: f32,
+        block_matcher: &'a BlockMatcher,
     ) -> Self {
         if cov_value <= 1. {
             panic!("error epiploar search cov value {}", cov_value);
@@ -37,6 +46,7 @@ impl<'a> EpipolarSearch<'a> {
             k1,
             k2,
             cov_value,
+            block_matcher,
         }
     }
     pub fn search(
@@ -47,7 +57,8 @@ impl<'a> EpipolarSearch<'a> {
         max_depth: f32,
         min_depth: f32,
         depth_cov: f32,
-    ) -> Option<Vector2<u32>> {
+        insider: &dyn Inside,
+    ) -> Option<Vector2<f32>> {
         let f_ref = px2cam(pt_current, self.k1);
         let f_ref = f_ref.normalize();
         let P_ref = f_ref * depth;
@@ -80,6 +91,58 @@ impl<'a> EpipolarSearch<'a> {
             },
             self.k1,
         );
-        todo!()
+
+        let epipolar_line = px_max_curr - px_min_curr;
+        let epipolar_direction = epipolar_line.normalize();
+        let mut half_length = 0.5 * epipolar_line.norm();
+        // 不希望在极线搜索时，搜索太多的东西
+        if half_length > 100. {
+            half_length = 100.
+        }
+
+        let mut best_ncc = -1.;
+        let mut best_px_curr: Option<Vector2<f32>> = None;
+
+        let mut l = -half_length;
+        while l < half_length {
+            let px_curr = px_mean_curr + l * epipolar_direction;
+            if insider.inside(&px_curr) {
+                continue;
+            }
+            let match_score = self.block_matcher.match_block(pt_current, pt_next);
+            if self.block_matcher.better(best_ncc, match_score) {
+                best_ncc = match_score;
+                best_px_curr = Some(px_curr);
+            }
+
+            l += 0.7;
+        }
+        best_px_curr
+    }
+}
+
+pub trait Inside {
+    fn inside(&self, pt: &Vector2<f32>) -> bool;
+}
+
+pub struct Insider<'a> {
+    border: u32,
+    image: &'a DMatrix<f32>,
+}
+
+impl<'a> Insider<'a> {
+    pub fn new(border: u32, image: &'a DMatrix<f32>) -> Self {
+        Self { border, image }
+    }
+}
+
+impl<'a> Inside for Insider<'a> {
+    fn inside(&self, pt: &Vector2<f32>) -> bool {
+        let shape = self.image.shape();
+        let border = self.border as f32;
+        pt[(0, 0)] >= border
+            && pt[(1, 0)] >= border
+            && pt[(0, 0)] + border < shape.0 as f32
+            && pt[(1, 0)] + border < shape.1 as f32
     }
 }
