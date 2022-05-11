@@ -108,7 +108,6 @@ impl DepthFilter<'_> {
         let insider = Insider::new(board as u32, self.current_frame.data);
         let shape = self.current_frame.shape();
 
-        let (_current_r_t, ref_r_t) = self.compute_current_ref_r_t();
         for x in board..shape.0 {
             for y in 0..shape.1 {
                 if self.cov_data[(x, y)] < min_cov || self.cov_data[(x, y)] > max_cov {
@@ -129,7 +128,6 @@ impl DepthFilter<'_> {
                     &pt_current,
                     best_pt.as_ref().unwrap(),
                     epipolar_direction,
-                    ref_r_t,
                 );
             }
         }
@@ -144,7 +142,6 @@ impl DepthFilter<'_> {
         pt_current: &Vector2<u32>,
         pt_ref: &Vector2<u32>,
         epipolar_direction: Vector2<f32>,
-        r_t: Matrix3x4<f32>,
     ) {
         todo!()
     }

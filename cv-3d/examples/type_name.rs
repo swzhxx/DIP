@@ -7,6 +7,6 @@ fn test_type<T>(_: T) {
 }
 
 fn main() {
-    let ncc = Ncc::default();
-    test_type(ncc)
+    // let ncc = Ncc::default();
+    // test_type(ncc)
 }
