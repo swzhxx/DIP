@@ -3,9 +3,9 @@ use nalgebra::DMatrix;
 /// Frame
 /// 目前只定义一个data
 /// 更具后面的需求补充相应的参数
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct Frame<'a> {
-    data: &'a DMatrix<f32>,
+    pub data: &'a DMatrix<f32>,
 }
 
 // impl<'a, 'b> From<&'b DMatrix<f32>> for Frame<'a>
@@ -32,6 +32,10 @@ impl<'a> Frame<'a> {
         'b: 'a,
     {
         Self { data }
+    }
+
+    pub fn clone(&self) -> Self {
+        Self { data: self.data }
     }
 }
 

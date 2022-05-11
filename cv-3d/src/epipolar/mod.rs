@@ -11,14 +11,14 @@ pub struct EpipolarSearch<'a, BlockMatcher>
 where
     BlockMatcher: BlockMatch,
 {
-    current_frame: &'a Frame<'a>,
-    next_frame: &'a Frame<'a>,
+    current_frame: Frame<'a>,
+    next_frame: Frame<'a>,
     k1: &'a Matrix3<f32>,
     k2: &'a Matrix3<f32>,
-    current_r_t: &'a Matrix3x4<f32>,
-    ref_r_t: &'a Matrix3x4<f32>,
+    current_r_t: Matrix3x4<f32>,
+    ref_r_t: Matrix3x4<f32>,
     cov_value: f32,
-    block_matcher: &'a BlockMatcher,
+    block_matcher: BlockMatcher,
 }
 
 impl<'a, BlockMatcher> EpipolarSearch<'a, BlockMatcher>
@@ -26,14 +26,14 @@ where
     BlockMatcher: BlockMatch,
 {
     pub fn new(
-        current_frame: &'a Frame,
-        next_frame: &'a Frame,
+        current_frame: Frame<'a>,
+        next_frame: Frame<'a>,
         k1: &'a Matrix3<f32>,
         k2: &'a Matrix3<f32>,
-        current_r_t: &'a Matrix3x4<f32>,
-        ref_r_t: &'a Matrix3x4<f32>,
+        current_r_t: Matrix3x4<f32>,
+        ref_r_t: Matrix3x4<f32>,
         cov_value: f32,
-        block_matcher: &'a BlockMatcher,
+        block_matcher: BlockMatcher,
     ) -> Self {
         if cov_value <= 1. {
             panic!("error epiploar search cov value {}", cov_value);
@@ -52,13 +52,10 @@ where
     pub fn search(
         &self,
         pt_current: &Vector2<u32>,
-        pt_next: &Vector2<u32>,
         depth: f32,
-        max_depth: f32,
-        min_depth: f32,
         depth_cov: f32,
         insider: &dyn Inside,
-    ) -> Option<Vector2<f32>> {
+    ) -> (Option<Vector2<u32>>, Vector2<f32>) {
         let f_ref = px2cam(pt_current, self.k1);
         let f_ref = f_ref.normalize();
         let P_ref = f_ref * depth;
@@ -101,23 +98,24 @@ where
         }
 
         let mut best_ncc = -1.;
-        let mut best_px_curr: Option<Vector2<f32>> = None;
+        let mut best_px_curr: Option<Vector2<u32>> = None;
 
         let mut l = -half_length;
         while l < half_length {
-            let px_curr = px_mean_curr + l * epipolar_direction;
-            if insider.inside(&px_curr) {
+            let pt_next = px_mean_curr + l * epipolar_direction;
+            if insider.inside(&pt_next) {
                 continue;
             }
-            let match_score = self.block_matcher.match_block(pt_current, pt_next);
+            let pt_next = Vector2::new(pt_next.x as u32, pt_next.y as u32);
+            let match_score = self.block_matcher.match_block(pt_current, &pt_next);
             if self.block_matcher.better(best_ncc, match_score) {
                 best_ncc = match_score;
-                best_px_curr = Some(px_curr);
+                best_px_curr = Some(pt_next);
             }
 
             l += 0.7;
         }
-        best_px_curr
+        (best_px_curr, epipolar_direction)
     }
 }
 

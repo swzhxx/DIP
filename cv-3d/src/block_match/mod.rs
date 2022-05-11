@@ -1,5 +1,7 @@
 use nalgebra::{DMatrix, Vector2};
 
+use crate::frame::Frame;
+
 pub trait BlockMatch {
     fn match_block(&self, pt1: &Vector2<u32>, pt2: &Vector2<u32>) -> f32;
     fn better(&self, last_score: f32, current_score: f32) -> bool;
@@ -9,15 +11,15 @@ pub trait BlockMatch {
 #[derive(Debug, Clone)]
 pub struct Ncc<'a> {
     ncc_window_size: Option<u32>,
-    image1: &'a DMatrix<f32>,
-    image2: &'a DMatrix<f32>,
+    image1: Frame<'a>,
+    image2: Frame<'a>,
     pass_number: f32,
 }
 
 impl<'a> Ncc<'a> {
     pub fn new(
-        image1: &'a DMatrix<f32>,
-        image2: &'a DMatrix<f32>,
+        image1: Frame<'a>,
+        image2: Frame<'a>,
         pass_number: f32,
         ncc_window_size: Option<u32>,
     ) -> Self {
@@ -33,7 +35,7 @@ impl<'a> Ncc<'a> {
 impl BlockMatch for Ncc<'_> {
     fn match_block(&self, pt1: &Vector2<u32>, pt2: &Vector2<u32>) -> f32 {
         let ncc_window_size = self.ncc_window_size.unwrap_or(3);
-        let block1 = self.image1.slice(
+        let block1 = self.image1.data.slice(
             (
                 (pt1.x - ncc_window_size) as usize,
                 (pt1.y - ncc_window_size) as usize,
@@ -43,7 +45,7 @@ impl BlockMatch for Ncc<'_> {
                 (2 * ncc_window_size + 1) as usize,
             ),
         );
-        let block2 = self.image2.slice(
+        let block2 = self.image2.data.slice(
             (
                 (pt2.x - ncc_window_size) as usize,
                 (pt2.y - ncc_window_size) as usize,
