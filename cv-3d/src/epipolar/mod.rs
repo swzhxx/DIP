@@ -11,12 +11,8 @@ pub struct EpipolarSearch<'a, BlockMatcher>
 where
     BlockMatcher: BlockMatch,
 {
-    current_frame: Frame<'a>,
-    next_frame: Frame<'a>,
     k1: &'a Matrix3<f32>,
-    k2: &'a Matrix3<f32>,
     current_r_t: Matrix3x4<f32>,
-    ref_r_t: Matrix3x4<f32>,
     cov_value: f32,
     block_matcher: BlockMatcher,
 }
@@ -26,12 +22,8 @@ where
     BlockMatcher: BlockMatch,
 {
     pub fn new(
-        current_frame: Frame<'a>,
-        next_frame: Frame<'a>,
         k1: &'a Matrix3<f32>,
-        k2: &'a Matrix3<f32>,
         current_r_t: Matrix3x4<f32>,
-        ref_r_t: Matrix3x4<f32>,
         cov_value: f32,
         block_matcher: BlockMatcher,
     ) -> Self {
@@ -39,12 +31,10 @@ where
             panic!("error epiploar search cov value {}", cov_value);
         }
         Self {
-            current_frame,
-            next_frame,
             current_r_t,
-            ref_r_t,
+
             k1,
-            k2,
+
             cov_value,
             block_matcher,
         }
@@ -56,15 +46,15 @@ where
         depth_cov: f32,
         insider: &dyn Inside,
     ) -> (Option<Vector2<u32>>, Vector2<f32>) {
-        let f_ref = px2cam(pt_current, self.k1);
-        let f_ref = f_ref.normalize();
-        let P_ref = f_ref * depth;
+        let f_curr = px2cam(pt_current, self.k1);
+        let f_curr = f_curr.normalize();
+        let P_curr = f_curr * depth;
         let current_r = self.current_r_t.slice((0, 0), (3, 3));
         let current_t = self.current_r_t.slice((3, 0), (3, 1));
 
         let px_mean_curr = cam2px(
             &{
-                let p = &current_r * &P_ref + &current_t;
+                let p = &current_r * &P_curr + &current_t;
                 Vector3::new(p[0], p[1], p[2])
             },
             self.k1,
@@ -76,14 +66,14 @@ where
         }
         let px_min_curr = cam2px(
             &{
-                let p = &current_r * (&f_ref * d_min) + &current_t;
+                let p = &current_r * (&f_curr * d_min) + &current_t;
                 Vector3::new(p[0], p[1], p[2])
             },
             self.k1,
         );
         let px_max_curr = cam2px(
             &{
-                let p = &current_r * (&f_ref * d_max) + &current_t;
+                let p = &current_r * (&f_curr * d_max) + &current_t;
                 Vector3::new(p[0], p[1], p[2])
             },
             self.k1,

@@ -1,9 +1,10 @@
-use nalgebra::{DMatrix, Matrix3, Matrix3x4, Vector2, Vector3};
+use nalgebra::{AbstractRotation, DMatrix, Matrix2, Matrix3, Matrix3x4, Vector2, Vector3};
 
 use crate::{
     block_match::{BlockMatch, Ncc},
     epipolar::{self, EpipolarSearch, Insider},
     frame::Frame,
+    utils::px2cam,
 };
 
 const min_cov: f32 = 0.1; // 收敛判定：最小方差
@@ -83,16 +84,7 @@ impl<'a> DepthFilter<'a> {
 
         let (current_r_t, ref_r_t) = self.compute_current_ref_r_t();
 
-        let epipolar_searcher = EpipolarSearch::new(
-            self.current_frame.clone(),
-            self.next_frame.as_ref().unwrap().clone(),
-            self.k1,
-            self.k2,
-            current_r_t,
-            ref_r_t,
-            3.,
-            ncc,
-        );
+        let epipolar_searcher = EpipolarSearch::new(self.k1, current_r_t, 3., ncc);
         self.epipolar_searcher = Some(epipolar_searcher)
     }
 }
@@ -135,14 +127,35 @@ impl DepthFilter<'_> {
     }
 
     /// 计算depth
+    ///
     /// 更新深度矩阵和深度的方差矩阵
-
+    ///
+    /// [三角化公式](https://www.cnblogs.com/Jessica-jie/p/7730731.html)
     fn update_depth_filter(
         &mut self,
         pt_current: &Vector2<u32>,
         pt_ref: &Vector2<u32>,
         epipolar_direction: Vector2<f32>,
     ) {
+        let f_curr = px2cam(pt_current, self.k1);
+        let f_curr = f_curr.normalize();
+        let f_ref = px2cam(pt_ref, self.k2);
+        let f_ref = f_ref.normalize();
+
+        let f2 = self.rotate * &f_curr;
+        let b = Vector2::new(self.translate.dot(&f_ref), self.translate.dot(&f2));
+
+        let A = Matrix2::new(
+            f_ref.dot(&f_ref),
+            (-1. * &f_ref).dot(&f2),
+            f_ref.dot(&f2),
+            -f2.dot(&f2),
+        );
+        let ans = A.try_inverse().unwrap() * &b;
+        let xm = ans[0] * f_ref;
+        let xn = ans[1] * f2 + self.translate;
+        let p_esti = (xm + xn) / 2.0;
+        let depth_estimation = p_esti.norm();
         todo!()
     }
 
