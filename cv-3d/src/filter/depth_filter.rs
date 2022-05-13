@@ -1,3 +1,5 @@
+use std::f32::consts::PI;
+
 use nalgebra::{AbstractRotation, DMatrix, Matrix2, Matrix3, Matrix3x4, Vector2, Vector3};
 
 use crate::{
@@ -156,7 +158,30 @@ impl DepthFilter<'_> {
         let xn = ans[1] * f2 + self.translate;
         let p_esti = (xm + xn) / 2.0;
         let depth_estimation = p_esti.norm();
-        todo!()
+
+        //? 计算不确定性 , 这段完全看不懂
+        let p = f_ref * depth_estimation;
+        let a = p - self.translate;
+        let t_norm = self.translate.norm();
+        let a_norm = a.norm();
+        let alpha = (f_ref.dot(&self.translate) / t_norm).acos();
+        let beta = (-a.dot(&self.translate) / a_norm * t_norm).acos();
+        let f_curr_prime = px2cam(&pt_current, self.k1);
+        let f_curr_prime = f_curr_prime.normalize();
+        let beta_prime = (f_curr_prime.dot(&(-1. * self.translate)) / &t_norm).acos();
+        let gamma = PI - alpha - beta_prime;
+        let p_prime = t_norm * beta_prime.sin() / gamma.sin();
+        let d_cov = p_prime - depth_estimation;
+        let d_cov2 = d_cov * d_cov;
+
+        // 高斯融合
+        let mu = self.depth_data[((pt_ref.x as usize), (pt_ref.y as usize))];
+        let sigma2 = self.cov_data[((pt_ref.x as usize), (pt_ref.y as usize))];
+        let mu_fuse = (d_cov2 * mu + sigma2 * depth_estimation) / (sigma2 + d_cov2);
+        let sigma_fuse2 = (sigma2 * &d_cov2) / (sigma2 + d_cov2);
+
+        self.depth_data[(pt_ref.x as usize, pt_ref.y as usize)] = mu_fuse;
+        self.cov_data[(pt_ref.x as usize, pt_ref.y as usize)] = sigma_fuse2;
     }
 
     fn compute_current_ref_r_t(&self) -> (Matrix3x4<f32>, Matrix3x4<f32>) {
