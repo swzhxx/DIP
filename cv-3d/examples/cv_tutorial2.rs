@@ -77,9 +77,11 @@ impl AsArray for cv::core::Mat {
         if !self.is_continuous() {
             return Err(anyhow!("Mat is not continuous"));
         }
+
         let bytes = self.data_bytes()?;
         let size = self.size()?;
         let a = ArrayView3::from_shape((size.height as usize, size.width as usize, 3), bytes)?;
+
         Ok(a)
     }
 }

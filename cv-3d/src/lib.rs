@@ -3,8 +3,10 @@ use opencv::core::KeyPoint;
 
 pub mod block_match;
 pub mod epipolar;
+pub mod feature;
 pub mod filter;
 pub mod frame;
+pub mod fundamental;
 pub mod triangluate;
 pub mod utils;
 pub trait ToNaVector2 {
