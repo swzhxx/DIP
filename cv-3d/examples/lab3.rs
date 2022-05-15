@@ -303,8 +303,8 @@ impl Essential {
 struct HomographyBuilder {}
 
 fn main() -> Result<()> {
-    let img = cv::imgcodecs::imread("./images/DSC_0480.jpg", cv::imgcodecs::IMREAD_GRAYSCALE)?;
-    let img2 = cv::imgcodecs::imread("./images/DSC_0481.jpg", cv::imgcodecs::IMREAD_GRAYSCALE)?;
+    let img = cv::imgcodecs::imread("./images/1.png", cv::imgcodecs::IMREAD_GRAYSCALE)?;
+    let img2 = cv::imgcodecs::imread("./images/2.png", cv::imgcodecs::IMREAD_GRAYSCALE)?;
     let mut sift1 = SiftFeatureProcess::new(img);
     sift1.extract_features()?;
     let mut sift2 = SiftFeatureProcess::new(img2);
@@ -321,34 +321,8 @@ fn main() -> Result<()> {
     println!("good_pair_match_points {}", good_pair_match_points.len());
     let fundamental_matrix = Fundamental::get_fundamental_matrix(&good_pair_match_points);
     println!("fundamental_matrix {}", fundamental_matrix.0);
-
+    let k = Matrix3::new(520.9, 0., 325.1, 0., 521.0, 249.7, 0., 0., 1.);
+    let e = fundamental_matrix.to_esstianl_matrix(&k, None);
+    println!("{:?}", e);
     Ok(())
-}
-
-#[cfg(test)]
-mod test {
-    use nalgebra::Matrix3;
-
-    use crate::Essential;
-
-    #[test]
-    fn test_esstinal_decompose_possible() {
-        let esstinal = Matrix3::new(
-            0.01097677479889588,
-            0.2483720528328748,
-            0.03167429208264108,
-            -0.2088833206116968,
-            0.02908423961947315,
-            -0.674465883831914,
-            0.008286777626839029,
-            0.66140416240827,
-            0.01676523772760232,
-        );
-        let esstinal = Essential(esstinal);
-        let result = esstinal.decompose_possible_R_T();
-        println!("R1 {}", (result.0).0);
-        println!("R2 {}", (result.0).1);
-        println!("T1 {}", (result.1).0);
-        println!("T2 {}", (result.1).1);
-    }
 }
