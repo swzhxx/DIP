@@ -40,10 +40,8 @@ impl U8C3ToNaMatrix for Mat {
 
 #[cfg(test)]
 mod test {
-
-    use opencv::core::{Mat, MatExprTraitConst, MatTraitConst, CV_8UC3};
-
     use crate::U8C3ToNaMatrix;
+    use opencv::core::{Mat, MatExprTraitConst, MatTraitConst, CV_8UC3};
     #[test]
     fn u8c3_to_namatrix() {
         let mat = Mat::zeros(3, 3, CV_8UC3).unwrap().to_mat().unwrap();

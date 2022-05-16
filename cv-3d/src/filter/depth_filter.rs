@@ -26,7 +26,7 @@ pub struct DepthFilter<'a> {
 }
 
 impl<'a> DepthFilter<'a> {
-    fn new<'b, T>(
+    pub fn new<'b, T>(
         current_frame: T,
         init_depth: Option<f32>,
         k1: &'a Matrix3<f32>,

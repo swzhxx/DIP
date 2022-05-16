@@ -1,13 +1,15 @@
-use nalgebra::{vector, DVector, Matrix3, Matrix3x1, Matrix3x4, Vector2, Vector3, Dynamic, DMatrix};
+use nalgebra::{
+    vector, DMatrix, DVector, Dynamic, Matrix3, Matrix3x1, Matrix3x4, Vector2, Vector3,
+};
 use opencv::core::KeyPoint;
 
 use crate::{triangluate::RelativeDltTriangulator, ToNaVector2};
 
 #[derive(Debug, Clone)]
-pub struct Fundamental(Matrix3<f32>);
+pub struct Fundamental(pub Matrix3<f32>);
 
 impl Fundamental {
-    fn get_fundamental_matrix(pair_key_points: &Vec<(KeyPoint, KeyPoint)>) -> Self {
+    pub fn get_fundamental_matrix(pair_key_points: &Vec<(KeyPoint, KeyPoint)>) -> Self {
         let pts1: Vec<&KeyPoint> = pair_key_points.iter().map(|(kp, _)| return kp).collect();
         let pts2: Vec<&KeyPoint> = pair_key_points.iter().map(|(_, kp)| return kp).collect();
         let (n_pts1, T1) = Self::normalize(&pts1);
@@ -87,14 +89,13 @@ impl Fundamental {
 }
 
 impl Fundamental {
-    /// [本质矩阵分解推导](https://blog.csdn.net/kokerf/article/details/72911561)
-    fn to_esstianl_matrix(&self, k: &Matrix3<f32>, k2: Option<&Matrix3<f32>>) -> Essential {
+    pub fn to_esstianl_matrix(&self, k: &Matrix3<f32>, k2: Option<&Matrix3<f32>>) -> Essential {
         let k2 = k2.unwrap_or(k);
 
         Essential::new(self, k, k2)
     }
 }
-
+/// [本质矩阵分解推导](https://blog.csdn.net/kokerf/article/details/72911561)
 #[derive(Debug, Clone)]
 pub struct Essential {
     k1: Matrix3<f32>,

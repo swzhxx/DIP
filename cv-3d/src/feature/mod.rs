@@ -1,24 +1,31 @@
 use anyhow::{anyhow, Result};
 use opencv::core::{DMatch, KeyPoint, Vector};
 use opencv::{self as cv, prelude::*};
-trait FeatureProcess {
+pub trait FeatureProcess {
     type Output;
     fn extract_features(&mut self) -> Self::Output;
 }
 
-struct SiftFeatureProcess {
+pub struct SiftFeatureProcess {
     img: cv::core::Mat,
     key_points: Vector<KeyPoint>,
     desc: cv::core::Mat,
 }
 
 impl SiftFeatureProcess {
-    fn new(img: cv::core::Mat) -> Self {
+    pub fn new(img: cv::core::Mat) -> Self {
         Self {
             img,
             key_points: Default::default(),
             desc: Default::default(),
         }
+    }
+
+    pub fn get_desc(&self) -> &cv::core::Mat {
+        &self.desc
+    }
+    pub fn get_key_points(&self) -> &Vector<KeyPoint> {
+        &self.key_points
     }
 }
 
@@ -49,7 +56,7 @@ impl FeatureProcess for SiftFeatureProcess {
 }
 
 /// 处理特征点和Desc。获取
-struct FeaturePointMatchBuilder<'a> {
+pub struct FeaturePointMatchBuilder<'a> {
     matches: Vec<DMatch>,
     desc1: &'a cv::core::Mat,
     desc2: &'a cv::core::Mat,
@@ -58,7 +65,7 @@ struct FeaturePointMatchBuilder<'a> {
 }
 
 impl<'a> FeaturePointMatchBuilder<'a> {
-    fn new(
+    pub fn new(
         desc1: &'a cv::core::Mat,
         desc2: &'a cv::core::Mat,
         key_points_1: &'a Vector<KeyPoint>,
@@ -72,7 +79,7 @@ impl<'a> FeaturePointMatchBuilder<'a> {
             key_points_2,
         }
     }
-    fn compute_matches(&mut self, ratio: f32) -> Result<()> {
+    pub fn compute_matches(&mut self, ratio: f32) -> Result<()> {
         let bf = cv::features2d::BFMatcher::create(cv::core::NORM_L2, false)?;
         let mut dmatches: Vector<Vector<DMatch>> = Vector::default();
         bf.knn_train_match(
@@ -97,7 +104,7 @@ impl<'a> FeaturePointMatchBuilder<'a> {
         Ok(())
     }
 
-    fn get_matching_keypoint_pair(&self) -> Vec<(KeyPoint, KeyPoint)> {
+    pub fn get_matching_keypoint_pair(&self) -> Vec<(KeyPoint, KeyPoint)> {
         let mut pairs: Vec<(KeyPoint, KeyPoint)> = vec![];
         for m in &self.matches {
             let query_point = self.key_points_1.get(m.query_idx as usize).unwrap();
