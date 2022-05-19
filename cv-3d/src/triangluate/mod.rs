@@ -5,12 +5,12 @@ pub struct RelativeDltTriangulator;
 
 impl RelativeDltTriangulator {
     pub fn triangluate_relative(
-        p1: &Matrix3x4<f32>,
-        p2: &Matrix3x4<f32>,
-        a: &Vector2<f32>,
-        b: &Vector2<f32>,
-    ) -> Option<Vector3<f32>> {
-        let mut design = DMatrix::<f32>::zeros(4, 4);
+        p1: &Matrix3x4<f64>,
+        p2: &Matrix3x4<f64>,
+        a: &Vector2<f64>,
+        b: &Vector2<f64>,
+    ) -> Option<Vector3<f64>> {
+        let mut design = DMatrix::<f64>::zeros(4, 4);
         design.row_mut(0).copy_from(&(-p1.row(1) + a.y * p1.row(2)));
         design.row_mut(1).copy_from(&(p1.row(0) - a.x * p1.row(2)));
         design.row_mut(2).copy_from(&(-p2.row(1) + b.y * p2.row(2)));

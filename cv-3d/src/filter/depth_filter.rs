@@ -58,7 +58,7 @@ impl<'a> DepthFilter<'a> {
         }
     }
 
-    fn add_frame<T>(&mut self, next_frame: T)
+    pub fn add_frame<T>(&mut self, next_frame: T)
     where
         T: Into<Frame<'a>>,
     {
@@ -191,5 +191,14 @@ impl DepthFilter<'_> {
         let mut ref_r_t = Matrix3x4::from_element(0.);
         ref_r_t.clone_from(&r_t);
         (current_r_t, r_t)
+    }
+}
+
+impl DepthFilter<'_> {
+    fn get_depth(&self) -> &DMatrix<f32> {
+        return &self.depth_data;
+    }
+    fn get_depth_cov(&self) -> &DMatrix<f32> {
+        return &self.cov_data;
     }
 }

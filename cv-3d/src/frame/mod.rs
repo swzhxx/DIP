@@ -17,6 +17,15 @@ pub struct Frame<'a> {
 //     }
 // }
 
+impl<'a, 'b> Into<Frame<'b>> for &'a Frame<'a>
+where
+    'a: 'b,
+{
+    fn into(self) -> Frame<'b> {
+        Frame { data: &self.data }
+    }
+}
+
 impl<'a, 'b> Into<Frame<'b>> for &'a DMatrix<f32>
 where
     'a: 'b,
