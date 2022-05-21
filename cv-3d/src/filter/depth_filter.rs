@@ -1,4 +1,4 @@
-use std::f32::consts::PI;
+use std::f64::consts::PI;
 
 use nalgebra::{AbstractRotation, DMatrix, Matrix2, Matrix3, Matrix3x4, Vector2, Vector3};
 
@@ -9,31 +9,31 @@ use crate::{
     utils::px2cam,
 };
 
-const min_cov: f32 = 0.1; // 收敛判定：最小方差
-const max_cov: f32 = 10.; // 发散判定：最大方差
+const min_cov: f64 = 0.1; // 收敛判定：最小方差
+const max_cov: f64 = 10.; // 发散判定：最大方差
 
 pub struct DepthFilter<'a> {
     initial: bool,
     current_frame: Frame<'a>,
-    k1: &'a Matrix3<f32>,
-    k2: &'a Matrix3<f32>,
-    rotate: &'a Matrix3<f32>,
-    translate: &'a Vector3<f32>,
+    k1: &'a Matrix3<f64>,
+    k2: &'a Matrix3<f64>,
+    rotate: &'a Matrix3<f64>,
+    translate: &'a Vector3<f64>,
     next_frame: Option<Frame<'a>>,
-    depth_data: DMatrix<f32>,
-    cov_data: DMatrix<f32>,
+    depth_data: DMatrix<f64>,
+    cov_data: DMatrix<f64>,
     epipolar_searcher: Option<EpipolarSearch<'a, Ncc<'a>>>,
 }
 
 impl<'a> DepthFilter<'a> {
     pub fn new<'b, T>(
         current_frame: T,
-        init_depth: Option<f32>,
-        k1: &'a Matrix3<f32>,
-        k2: &'a Matrix3<f32>,
-        rotate: &'a Matrix3<f32>,
-        translate: &'a Vector3<f32>,
-        cov_depth: Option<f32>,
+        init_depth: Option<f64>,
+        k1: &'a Matrix3<f64>,
+        k2: &'a Matrix3<f64>,
+        rotate: &'a Matrix3<f64>,
+        translate: &'a Vector3<f64>,
+        cov_depth: Option<f64>,
     ) -> Self
     where
         'b: 'a,
@@ -137,7 +137,7 @@ impl DepthFilter<'_> {
         &mut self,
         pt_current: &Vector2<u32>,
         pt_ref: &Vector2<u32>,
-        epipolar_direction: Vector2<f32>,
+        epipolar_direction: Vector2<f64>,
     ) {
         let f_curr = px2cam(pt_current, self.k1);
         let f_curr = f_curr.normalize();
@@ -184,7 +184,7 @@ impl DepthFilter<'_> {
         self.cov_data[(pt_ref.x as usize, pt_ref.y as usize)] = sigma_fuse2;
     }
 
-    fn compute_current_ref_r_t(&self) -> (Matrix3x4<f32>, Matrix3x4<f32>) {
+    fn compute_current_ref_r_t(&self) -> (Matrix3x4<f64>, Matrix3x4<f64>) {
         let current_r_t = Matrix3x4::identity();
         let mut r_t = self.rotate.clone().insert_column(3, 0.);
         r_t.column_mut(3).copy_from(self.translate);
@@ -195,10 +195,10 @@ impl DepthFilter<'_> {
 }
 
 impl DepthFilter<'_> {
-    fn get_depth(&self) -> &DMatrix<f32> {
+    fn get_depth(&self) -> &DMatrix<f64> {
         return &self.depth_data;
     }
-    fn get_depth_cov(&self) -> &DMatrix<f32> {
+    fn get_depth_cov(&self) -> &DMatrix<f64> {
         return &self.cov_data;
     }
 }

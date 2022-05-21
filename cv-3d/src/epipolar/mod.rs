@@ -11,9 +11,9 @@ pub struct EpipolarSearch<'a, BlockMatcher>
 where
     BlockMatcher: BlockMatch,
 {
-    k1: &'a Matrix3<f32>,
-    current_r_t: Matrix3x4<f32>,
-    cov_value: f32,
+    k1: &'a Matrix3<f64>,
+    current_r_t: Matrix3x4<f64>,
+    cov_value: f64,
     block_matcher: BlockMatcher,
 }
 
@@ -22,9 +22,9 @@ where
     BlockMatcher: BlockMatch,
 {
     pub fn new(
-        k1: &'a Matrix3<f32>,
-        current_r_t: Matrix3x4<f32>,
-        cov_value: f32,
+        k1: &'a Matrix3<f64>,
+        current_r_t: Matrix3x4<f64>,
+        cov_value: f64,
         block_matcher: BlockMatcher,
     ) -> Self {
         if cov_value <= 1. {
@@ -42,10 +42,10 @@ where
     pub fn search(
         &self,
         pt_current: &Vector2<u32>,
-        depth: f32,
-        depth_cov: f32,
+        depth: f64,
+        depth_cov: f64,
         insider: &dyn Inside,
-    ) -> (Option<Vector2<u32>>, Vector2<f32>) {
+    ) -> (Option<Vector2<u32>>, Vector2<f64>) {
         let f_curr = px2cam(pt_current, self.k1);
         let f_curr = f_curr.normalize();
         let P_curr = f_curr * depth;
@@ -110,27 +110,27 @@ where
 }
 
 pub trait Inside {
-    fn inside(&self, pt: &Vector2<f32>) -> bool;
+    fn inside(&self, pt: &Vector2<f64>) -> bool;
 }
 
 pub struct Insider<'a> {
     border: u32,
-    image: &'a DMatrix<f32>,
+    image: &'a DMatrix<f64>,
 }
 
 impl<'a> Insider<'a> {
-    pub fn new(border: u32, image: &'a DMatrix<f32>) -> Self {
+    pub fn new(border: u32, image: &'a DMatrix<f64>) -> Self {
         Self { border, image }
     }
 }
 
 impl<'a> Inside for Insider<'a> {
-    fn inside(&self, pt: &Vector2<f32>) -> bool {
+    fn inside(&self, pt: &Vector2<f64>) -> bool {
         let shape = self.image.shape();
-        let border = self.border as f32;
+        let border = self.border as f64;
         pt[(0, 0)] >= border
             && pt[(1, 0)] >= border
-            && pt[(0, 0)] + border < shape.0 as f32
-            && pt[(1, 0)] + border < shape.1 as f32
+            && pt[(0, 0)] + border < shape.0 as f64
+            && pt[(1, 0)] + border < shape.1 as f64
     }
 }

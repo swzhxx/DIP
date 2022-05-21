@@ -4,7 +4,9 @@ use nalgebra::{
 };
 use opencv::core::{KeyPoint, Point2f};
 
-use crate::{triangluate::RelativeDltTriangulator, ToNaVector2};
+use crate::{
+    triangluate::RelativeDltTriangulator, utils::compute_min_vt_eigen_vector, ToNaVector2,
+};
 
 #[derive(Debug, Clone)]
 pub struct Fundamental(pub Matrix3<f64>);
@@ -48,19 +50,13 @@ impl Fundamental {
             ]);
             w.row_mut(i).copy_from(&row.transpose());
         }
-        println!("w {}", w);
-        let svd = w.svd(true, true);
-        let v_t = svd.v_t.unwrap();
-        println!("v_t {}", v_t);
-        let v = v_t.transpose();
-        let f = v
-            .column(v.shape().1 - 1)
-            .clone_owned()
+        // println!("w {}", w);
+        let f = compute_min_vt_eigen_vector(&w)
             .reshape_generic(Dynamic::new(3), Dynamic::new(3))
             .transpose();
 
         let mut svd = f.svd(true, true);
-        println!("svd singular_values {:?}", svd.singular_values);
+        // println!("svd singular_values {:?}", svd.singular_values);
         *(svd.singular_values.get_mut(2).unwrap()) = 0.;
         if esstinal {
             let sigma1 = svd.singular_values[0];
@@ -70,7 +66,7 @@ impl Fundamental {
             *(svd.singular_values.get_mut(1).unwrap()) = sigma;
         }
         let f = svd.recompose().unwrap();
-        println!("before f {}", f);
+        // println!("before f {}", f);
         let f = (T2.transpose() * &f) * &T1;
         // 这里按照f(2,2)进行处理是正确的吗?
         if !esstinal {
@@ -90,12 +86,12 @@ impl Fundamental {
         let _len = pts.len();
         u = u / _len as f64;
         v = v / _len as f64;
-        println!("u {:?} v {:?}", u, v);
+        // println!("u {:?} v {:?}", u, v);
         let d = pts.iter().fold(0. as f64, |acc, item| {
             acc + ((item.x).powf(2.) + (item.y).powf(2.)).sqrt() as f64
         });
 
-        println!("d {:?}", d);
+        // println!("d {:?}", d);
         let s = (2. as f64).sqrt() / d;
         let T = Matrix3::new(s, 0., -u * s, -0., s, -v * s, 0., 0., 1.);
 
@@ -105,14 +101,14 @@ impl Fundamental {
             .map(|pt| T * pt)
             .map(|pt| pt / *pt.get(2).unwrap())
             .collect();
-        println!("Normalize PT\n {:?}", pts);
-        println!("Normalize T\n {}", T);
+        // println!("Normalize PT\n {:?}", pts);
+        // println!("Normalize T\n {}", T);
         (pts, T)
     }
 }
 
 impl Fundamental {
-    pub fn to_esstianl_matrix(&self, k: &Matrix3<f64>, k2: Option<&Matrix3<f64>>) -> Essential {
+    pub fn to_essential_matrix(&self, k: &Matrix3<f64>, k2: Option<&Matrix3<f64>>) -> Essential {
         let k2 = k2.unwrap_or(k);
 
         Essential::new(self, k, k2)

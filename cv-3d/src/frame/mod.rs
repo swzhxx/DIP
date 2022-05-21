@@ -5,14 +5,14 @@ use nalgebra::DMatrix;
 /// 更具后面的需求补充相应的参数
 #[derive(Debug, Clone)]
 pub struct Frame<'a> {
-    pub data: &'a DMatrix<f32>,
+    pub data: &'a DMatrix<f64>,
 }
 
-// impl<'a, 'b> From<&'b DMatrix<f32>> for Frame<'a>
+// impl<'a, 'b> From<&'b DMatrix<f64>> for Frame<'a>
 // where
 //     'b: 'a,
 // {
-//     fn from(data: &'b DMatrix<f32>) -> Self {
+//     fn from(data: &'b DMatrix<f64>) -> Self {
 //         Self { data }
 //     }
 // }
@@ -26,7 +26,7 @@ where
     }
 }
 
-impl<'a, 'b> Into<Frame<'b>> for &'a DMatrix<f32>
+impl<'a, 'b> Into<Frame<'b>> for &'a DMatrix<f64>
 where
     'a: 'b,
 {
@@ -36,7 +36,7 @@ where
 }
 
 impl<'a> Frame<'a> {
-    pub fn new<'b>(data: &'b DMatrix<f32>) -> Self
+    pub fn new<'b>(data: &'b DMatrix<f64>) -> Self
     where
         'b: 'a,
     {
@@ -53,7 +53,7 @@ impl Frame<'_> {
         self.data.shape()
     }
 
-    pub fn get_data(&self) -> &DMatrix<f32> {
+    pub fn get_data(&self) -> &DMatrix<f64> {
         self.data
     }
 }
