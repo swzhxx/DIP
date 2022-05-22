@@ -56,34 +56,34 @@ fn main() -> Result<()> {
     //     &mut cv::core::Mat::default(),
     // )?;
 
-    let fundamental = DMatrix::<f64>::try_from_cv(&fundamental)?.map(|val| val as f64);
-    let fundamental = Matrix3::from_vec(fundamental.data.as_vec().to_vec());
-    let fundamental = Fundamental(fundamental);
-    println!(" fundamental {:?}", fundamental);
-    // let fundamental = Fundamental::get_fundamental_matrix(&good_match, false);
+    // let fundamental = DMatrix::<f64>::try_from_cv(&fundamental)?.map(|val| val as f64);
+    // let fundamental = Matrix3::from_vec(fundamental.data.as_vec().to_vec());
+    // let fundamental = Fundamental(fundamental);
     // println!(" fundamental {:?}", fundamental);
-    let img1 = img1.to_na_matrix().map(|v| v as f32);
-    let img2 = img2.to_na_matrix().map(|v| v as f32);
+    // let fundamental = Fundamental::get_fundamental_matrix(&good_matches, false);
+    // // println!(" fundamental {:?}", fundamental);
+    let img1 = img1.to_na_matrix().map(|v| v as f64);
+    let img2 = img2.to_na_matrix().map(|v| v as f64);
     let k: Matrix3<f64> = Matrix3::new(520.9, 0., 325.1, 0., 521.0, 249.7, 0., 0., 1.);
-    let essential = fundamental.to_essential_matrix(&k, None);
-    println!("essential {:?}", essential.get_e());
-    let (r, t) = essential.find_R_T(&good_matches, None);
-    println!("r {:?}  , t {:?}", r, t);
+    // let essential = fundamental.to_essential_matrix(&k, None);
+    // println!("essential {:?}", essential.get_e());
+    // let (r, t) = essential.find_R_T(&good_matches, None);
+    // println!("r {:?}  , t {:?}", r, t);
     println!("------------------------------------");
-    let fundamental = Fundamental::get_fundamental_matrix(&good_matches, false);
-    println!(" fundamental {:?}", fundamental.0);
+    // let fundamental = Fundamental::get_fundamental_matrix(&good_matches, false);
+    // println!(" fundamental {:?}", fundamental.0);
 
-    let essential = opencv::calib3d::find_essential_mat_1(
-        &kpts1,
-        &kpts2,
-        521.,
-        Point2d::new(325.1, 249.7),
-        RANSAC,
-        0.999,
-        1.,
-        1000,
-        &mut cv::core::Mat::default(),
-    )?;
+    // let essential = opencv::calib3d::find_essential_mat_1(
+    //     &kpts1,
+    //     &kpts2,
+    //     521.,
+    //     Point2d::new(325.1, 249.7),
+    //     RANSAC,
+    //     0.999,
+    //     1.,
+    //     1000,
+    //     &mut cv::core::Mat::default(),
+    // )?;
     // let camera = cv::core::Mat::eye(3, 3, cv::core::CV_64F)?;
     // let mut camera = camera.to_mat()?;
 
@@ -100,33 +100,33 @@ fn main() -> Result<()> {
     //     &mut cv::core::Mat::default(),
     // )?;
 
-    println!("essential {}", DMatrix::<f64>::try_from_cv(&essential)?);
-    println!("--------------------------------");
+    // println!("essential {}", DMatrix::<f64>::try_from_cv(&essential)?);
+    // println!("--------------------------------");
     let fundamental = Fundamental::get_fundamental_matrix(&good_matches, true);
     let essential = fundamental.to_essential_matrix(&k, None);
+
     println!("essential {:?}", essential.get_e());
 
     // println!("essential {}", DMatrix::<f64>::try_from_cv(&esstianl)?);
     let (r, t) = essential.find_R_T(&good_matches, None);
     println!("r {:?}  , t {:?}", r, t);
-    // let frames = [Frame::new(&img1), Frame::new(&img2)];
-    // let mut depth_filter: Option<DepthFilter> = None;
-    // for i in 0..1 {
-    //     if i == 0 {
-    //         depth_filter = Some(DepthFilter::new(
-    //             &frames[0],
-    //             Some(3.),
-    //             &k,
-    //             &k,
-    //             &r,
-    //             &t,
-    //             Some(3.),
-    //         ));
-    //     } else {
-    //         if !depth_filter.is_none() {
-    //             depth_filter.as_mut().unwrap().add_frame(&frames[1]);
-    //         }
-    //     }
-    // }
+    let frames = [Frame::new(&img1), Frame::new(&img2)];
+    let mut depth_filter: Option<DepthFilter> = None;
+    for i in 0..2 {
+        if i == 0 {
+            depth_filter = Some(DepthFilter::new(
+                &frames[i],
+                Some(3.),
+                &k,
+                &k,
+                &r,
+                &t,
+                Some(3.),
+            ));
+        } else {
+            depth_filter.as_mut().unwrap().add_frame(&frames[i]);
+        }
+    }
+    // println! {" depth {:?}" , depth_filter.as_ref().unwrap().get_depth()}
     Ok(())
 }

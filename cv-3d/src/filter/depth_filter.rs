@@ -62,6 +62,7 @@ impl<'a> DepthFilter<'a> {
     where
         T: Into<Frame<'a>>,
     {
+        println!("add_frame");
         let next_frame = next_frame.into();
         if self.next_frame.is_none() {
             self.next_frame = Some(next_frame);
@@ -84,39 +85,41 @@ impl<'a> DepthFilter<'a> {
             None,
         );
 
-        let (current_r_t, ref_r_t) = self.compute_current_ref_r_t();
+        let (_current_r_t, ref_r_t) = self.compute_current_ref_r_t();
 
-        let epipolar_searcher = EpipolarSearch::new(self.k1, current_r_t, 3., ncc);
+        let epipolar_searcher = EpipolarSearch::new(self.k1, ref_r_t, 3., ncc);
         self.epipolar_searcher = Some(epipolar_searcher)
     }
 }
 
 impl DepthFilter<'_> {
-    // 极线搜索
-    fn epipolar_search(&self) {
-        todo!()
-    }
     // 更新
     fn update(&mut self) {
+        println!("depth filter update");
         let board = 20usize;
         let insider = Insider::new(board as u32, self.current_frame.data);
         let shape = self.current_frame.shape();
-
-        for x in board..shape.0 {
-            for y in 0..shape.1 {
-                if self.cov_data[(x, y)] < min_cov || self.cov_data[(x, y)] > max_cov {
+        let mut count = 0;
+        for x in board..shape.1 {
+            for y in 0..shape.0 {
+                if self.cov_data[(y, x)] < min_cov || self.cov_data[(y, x)] > max_cov {
                     continue;
                 }
+
                 let pt_current = Vector2::new(x as u32, y as u32);
                 let searcher = self.epipolar_searcher.as_ref().unwrap();
                 let (best_pt, epipolar_direction) = searcher.search(
                     &pt_current,
-                    self.depth_data[(x, y)],
-                    self.cov_data[(x, y)],
+                    self.depth_data[(y, x)],
+                    self.cov_data[(y, x)],
                     &insider,
                 );
                 if best_pt.is_none() {
                     continue;
+                }
+                count += 1;
+                if count % 100 == 0 && count > 0 {
+                    println!("ncc count {:?}", count);
                 }
                 self.update_depth_filter(
                     &pt_current,
@@ -125,7 +128,6 @@ impl DepthFilter<'_> {
                 );
             }
         }
-        todo!()
     }
 
     /// 计算depth
@@ -165,7 +167,7 @@ impl DepthFilter<'_> {
         let t_norm = self.translate.norm();
         let a_norm = a.norm();
         let alpha = (f_ref.dot(&self.translate) / t_norm).acos();
-        let beta = (-a.dot(&self.translate) / a_norm * t_norm).acos();
+        let _beta = (-a.dot(&self.translate) / a_norm * t_norm).acos();
         let f_curr_prime = px2cam(&pt_current, self.k1);
         let f_curr_prime = f_curr_prime.normalize();
         let beta_prime = (f_curr_prime.dot(&(-1. * self.translate)) / &t_norm).acos();
@@ -180,8 +182,8 @@ impl DepthFilter<'_> {
         let mu_fuse = (d_cov2 * mu + sigma2 * depth_estimation) / (sigma2 + d_cov2);
         let sigma_fuse2 = (sigma2 * &d_cov2) / (sigma2 + d_cov2);
 
-        self.depth_data[(pt_ref.x as usize, pt_ref.y as usize)] = mu_fuse;
-        self.cov_data[(pt_ref.x as usize, pt_ref.y as usize)] = sigma_fuse2;
+        self.depth_data[(pt_ref.y as usize, pt_ref.x as usize)] = mu_fuse;
+        self.cov_data[(pt_ref.y as usize, pt_ref.x as usize)] = sigma_fuse2;
     }
 
     fn compute_current_ref_r_t(&self) -> (Matrix3x4<f64>, Matrix3x4<f64>) {
@@ -195,10 +197,10 @@ impl DepthFilter<'_> {
 }
 
 impl DepthFilter<'_> {
-    fn get_depth(&self) -> &DMatrix<f64> {
+    pub fn get_depth(&self) -> &DMatrix<f64> {
         return &self.depth_data;
     }
-    fn get_depth_cov(&self) -> &DMatrix<f64> {
+    pub fn get_depth_cov(&self) -> &DMatrix<f64> {
         return &self.cov_data;
     }
 }

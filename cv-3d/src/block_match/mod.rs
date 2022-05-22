@@ -37,18 +37,19 @@ impl BlockMatch for Ncc<'_> {
         let ncc_window_size = self.ncc_window_size.unwrap_or(3);
         let block1 = self.image1.data.slice(
             (
-                (pt1.x - ncc_window_size) as usize,
                 (pt1.y - ncc_window_size) as usize,
+                (pt1.x - ncc_window_size) as usize,
             ),
             (
                 (2 * ncc_window_size + 1) as usize,
                 (2 * ncc_window_size + 1) as usize,
             ),
         );
+
         let block2 = self.image2.data.slice(
             (
-                (pt2.x - ncc_window_size) as usize,
                 (pt2.y - ncc_window_size) as usize,
+                (pt2.x - ncc_window_size) as usize,
             ),
             (
                 (2 * ncc_window_size + 1) as usize,

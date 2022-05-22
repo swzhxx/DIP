@@ -32,9 +32,7 @@ where
         }
         Self {
             current_r_t,
-
             k1,
-
             cov_value,
             block_matcher,
         }
@@ -46,11 +44,15 @@ where
         depth_cov: f64,
         insider: &dyn Inside,
     ) -> (Option<Vector2<u32>>, Vector2<f64>) {
+        if !insider.inside(&Vector2::new(pt_current.x as f64, pt_current.y as f64)) {
+            return (None, Vector2::new(0., 0.));
+        }
         let f_curr = px2cam(pt_current, self.k1);
         let f_curr = f_curr.normalize();
         let P_curr = f_curr * depth;
+
         let current_r = self.current_r_t.slice((0, 0), (3, 3));
-        let current_t = self.current_r_t.slice((3, 0), (3, 1));
+        let current_t = self.current_r_t.slice((0, 3), (3, 1));
 
         let px_mean_curr = cam2px(
             &{
@@ -93,7 +95,8 @@ where
         let mut l = -half_length;
         while l < half_length {
             let pt_next = px_mean_curr + l * epipolar_direction;
-            if insider.inside(&pt_next) {
+            if !insider.inside(&pt_next) {
+                l += 0.7;
                 continue;
             }
             let pt_next = Vector2::new(pt_next.x as u32, pt_next.y as u32);
@@ -102,7 +105,6 @@ where
                 best_ncc = match_score;
                 best_px_curr = Some(pt_next);
             }
-
             l += 0.7;
         }
         (best_px_curr, epipolar_direction)
@@ -127,10 +129,25 @@ impl<'a> Insider<'a> {
 impl<'a> Inside for Insider<'a> {
     fn inside(&self, pt: &Vector2<f64>) -> bool {
         let shape = self.image.shape();
+
         let border = self.border as f64;
-        pt[(0, 0)] >= border
-            && pt[(1, 0)] >= border
-            && pt[(0, 0)] + border < shape.0 as f64
-            && pt[(1, 0)] + border < shape.1 as f64
+        pt.x >= border
+            && pt.y >= border
+            && (pt.x + border) < shape.1 as f64
+            && (pt.y + border) < shape.0 as f64
+    }
+}
+
+#[cfg(test)]
+mod test {
+    use super::Insider;
+    use crate::epipolar::Inside;
+    use nalgebra::{DMatrix, Vector2};
+
+    #[test]
+    fn test_inside() {
+        let image = DMatrix::from_element(640, 480, 1.);
+        let insider = Insider::new(20, &image);
+        assert_eq!(insider.inside(&Vector2::new(325., 477.)), false);
     }
 }
