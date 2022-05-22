@@ -8,7 +8,7 @@ where
 {
     let cx = camera_inner_matrix[(0, 2)];
     let cy = camera_inner_matrix[(1, 2)];
-    let fx = camera_inner_matrix[(0, 1)];
+    let fx = camera_inner_matrix[(0, 0)];
     let fy = camera_inner_matrix[(1, 1)];
 
     let x = pt.x.to_f64().unwrap();
