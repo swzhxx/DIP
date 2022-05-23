@@ -20,7 +20,7 @@ where
 pub fn cam2px(pt: &Vector3<f64>, camera_inner_matrix: &Matrix3<f64>) -> Vector2<f64> {
     let cx = camera_inner_matrix[(0, 2)];
     let cy = camera_inner_matrix[(1, 2)];
-    let fx = camera_inner_matrix[(0, 1)];
+    let fx = camera_inner_matrix[(0, 0)];
     let fy = camera_inner_matrix[(1, 1)];
     Vector2::new(pt.x * fx / pt.z + cx, pt.y * fy / pt.z + cy)
 }

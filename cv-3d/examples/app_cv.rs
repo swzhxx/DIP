@@ -2,21 +2,21 @@ use anyhow::Result;
 use cv::{
     calib3d::{FM_8POINT, RANSAC},
     core::Point2f,
-    core::{MatExprTraitConst, Vector},
+    core::{MatExprTraitConst, MatTraitConst, MatTraitConstManual, Vec3b, Vec3d, Vector},
     core::{Point2d, ToInputArray},
 };
 use cv_3d::{
     feature::FeatureProcess, filter::depth_filter::DepthFilter, frame::Frame,
-    fundamental::Fundamental, *,
+    fundamental::Fundamental, utils::px2cam, *,
 };
 use cv_convert::{IntoCv, TryFromCv};
-use kiss3d::window::Window;
-use nalgebra::{DMatrix, Matrix3};
+use kiss3d::{camera::FirstPerson, light::Light, window::Window};
+use nalgebra::{DMatrix, Matrix3, Point3, Vector2};
 use opencv::{self as cv, core::KeyPoint};
 fn main() -> Result<()> {
-    let img1 = cv::imgcodecs::imread("./images/1.png", cv::imgcodecs::IMREAD_COLOR)?;
-    let img2 = cv::imgcodecs::imread("./images/2.png", cv::imgcodecs::IMREAD_COLOR)?;
-    let sifts: Vec<feature::SiftFeatureProcess> = [&img1, &img2]
+    let oimg1 = cv::imgcodecs::imread("./images/1.png", cv::imgcodecs::IMREAD_COLOR)?;
+    let oimg2 = cv::imgcodecs::imread("./images/2.png", cv::imgcodecs::IMREAD_COLOR)?;
+    let sifts: Vec<feature::SiftFeatureProcess> = [&oimg1, &oimg2]
         .iter()
         .map(|img| {
             let mut sift = feature::SiftFeatureProcess::new((*img).clone());
@@ -62,8 +62,8 @@ fn main() -> Result<()> {
     // println!(" fundamental {:?}", fundamental);
     // let fundamental = Fundamental::get_fundamental_matrix(&good_matches, false);
     // // println!(" fundamental {:?}", fundamental);
-    let img1 = img1.to_na_matrix().map(|v| v as f64);
-    let img2 = img2.to_na_matrix().map(|v| v as f64);
+    let img1 = oimg1.to_na_matrix().map(|v| v as f64);
+    let img2 = oimg2.to_na_matrix().map(|v| v as f64);
     let k: Matrix3<f64> = Matrix3::new(520.9, 0., 325.1, 0., 521.0, 249.7, 0., 0., 1.);
     // let essential = fundamental.to_essential_matrix(&k, None);
     // println!("essential {:?}", essential.get_e());
@@ -125,6 +125,39 @@ fn main() -> Result<()> {
             ));
         } else {
             depth_filter.as_mut().unwrap().add_frame(&frames[i]);
+        }
+    }
+
+    let mut points = vec![];
+    let shape = img1.shape();
+
+    for y in 0..shape.0 {
+        for x in 0..shape.1 {
+            let depth = depth_filter.as_ref().unwrap().get_depth()[(y, x)];
+            if depth == 3.0 {
+                continue;
+            }
+            let pt = px2cam(&Vector2::new(x as f64, y as f64), &k);
+            let pt = pt * depth;
+            points.push((
+                Point3::new(pt.x as f32, pt.y as f32, pt.z as f32),
+                Point3::new(
+                    ((oimg1.at_2d::<Vec3b>(y as i32, x as i32).unwrap()[2]) as f32 / 255.) as f32,
+                    ((oimg1.at_2d::<Vec3b>(y as i32, x as i32).unwrap()[1]) as f32 / 255.) as f32,
+                    ((oimg1.at_2d::<Vec3b>(y as i32, x as i32).unwrap()[0]) as f32 / 255.) as f32,
+                ),
+            ));
+        }
+    }
+    println!("{:?}", points.len());
+    let mut window = Window::new(" kiss 3d ");
+    window.set_light(Light::StickToCamera);
+    window.set_point_size(1.);
+    window.set_background_color(0.9, 0.9, 0.9);
+    let mut camera = FirstPerson::new(Point3::new(0., 0., 0.), Point3::new(0., 0., 1.));
+    while window.render_with_camera(&mut camera) {
+        for i in 0..points.len() {
+            window.draw_point(&points[i].0, &points[i].1);
         }
     }
     // println! {" depth {:?}" , depth_filter.as_ref().unwrap().get_depth()}

@@ -61,6 +61,7 @@ where
             },
             self.k1,
         );
+        // println!(" px_mean_curr {}", px_mean_curr);
         let mut d_min = depth - self.cov_value * depth_cov;
         let d_max = depth + self.cov_value * depth_cov;
         if d_min < 0.1 {
@@ -93,6 +94,7 @@ where
         let mut best_px_curr: Option<Vector2<u32>> = None;
 
         let mut l = -half_length;
+
         while l < half_length {
             let pt_next = px_mean_curr + l * epipolar_direction;
             if !insider.inside(&pt_next) {
