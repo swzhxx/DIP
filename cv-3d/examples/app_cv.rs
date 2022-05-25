@@ -11,7 +11,7 @@ use cv_3d::{
 };
 use cv_convert::{IntoCv, TryFromCv};
 use kiss3d::{camera::FirstPerson, light::Light, window::Window};
-use nalgebra::{DMatrix, Matrix3, Point3, Vector2};
+use nalgebra::{DMatrix, Matrix3, Point3, Vector2, Vector3};
 use opencv::{self as cv, core::KeyPoint};
 fn main() -> Result<()> {
     let oimg1 = cv::imgcodecs::imread("./images/1.png", cv::imgcodecs::IMREAD_COLOR)?;
@@ -155,6 +155,7 @@ fn main() -> Result<()> {
     window.set_point_size(1.);
     window.set_background_color(0.9, 0.9, 0.9);
     let mut camera = FirstPerson::new(Point3::new(0., 0., 0.), Point3::new(0., 0., 1.));
+    camera.set_up_axis_dir(nalgebra::Unit::new_normalize(Vector3::new(0., -1., 0.)));
     while window.render_with_camera(&mut camera) {
         for i in 0..points.len() {
             window.draw_point(&points[i].0, &points[i].1);

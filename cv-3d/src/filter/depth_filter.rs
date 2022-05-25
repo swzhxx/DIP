@@ -160,31 +160,35 @@ impl DepthFilter<'_> {
         let xn = ans[1] * f2 + self.translate;
         let p_esti = (xm + xn) / 2.0;
         let depth_estimation = p_esti.norm();
+        self.depth_data[(pt_current.y as usize, pt_current.x as usize)] = depth_estimation;
+        // let inverse_depth_estimation = 1. / depth_estimation;
 
-        // self.depth_data[(pt_ref.y as usize, pt_ref.x as usize)] = depth_estimation;
         //? 计算不确定性 , 这段完全看不懂
-        let p = f_ref * depth_estimation;
+        let p = f_curr * depth_estimation;
         let a = p - self.translate;
         let t_norm = self.translate.norm();
         let a_norm = a.norm();
         let alpha = (f_ref.dot(&self.translate) / t_norm).acos();
-        let _beta = (-a.dot(&self.translate) / a_norm * t_norm).acos();
-        let f_curr_prime = px2cam(&pt_current, self.k1);
-        let f_curr_prime = f_curr_prime.normalize();
-        let beta_prime = (f_curr_prime.dot(&(-1. * self.translate)) / &t_norm).acos();
+        let _beta = (-a.dot(&self.translate) / (a_norm * t_norm)).acos();
+        let f_ref_prime = px2cam(
+            &(Vector2::new(pt_ref.x as f64, pt_ref.y as f64) + &epipolar_direction),
+            self.k1,
+        );
+        let f_ref_prime = f_ref_prime.normalize();
+        let beta_prime = (f_ref_prime.dot(&(-1. * self.translate)) / &t_norm).acos();
         let gamma = PI - alpha - beta_prime;
         let p_prime = t_norm * beta_prime.sin() / gamma.sin();
         let d_cov = p_prime - depth_estimation;
         let d_cov2 = d_cov * d_cov;
 
         // 高斯融合
-        let mu = self.depth_data[((pt_ref.y as usize), (pt_ref.x as usize))];
-        let sigma2 = self.cov_data[((pt_ref.y as usize), (pt_ref.x as usize))];
+        let mu = self.depth_data[((pt_current.y as usize), (pt_current.x as usize))];
+        let sigma2 = self.cov_data[((pt_current.y as usize), (pt_current.x as usize))];
         let mu_fuse = (d_cov2 * mu + sigma2 * depth_estimation) / (sigma2 + d_cov2);
         let sigma_fuse2 = (sigma2 * &d_cov2) / (sigma2 + d_cov2);
 
-        self.depth_data[(pt_ref.y as usize, pt_ref.x as usize)] = mu_fuse;
-        self.cov_data[(pt_ref.y as usize, pt_ref.x as usize)] = sigma_fuse2;
+        self.depth_data[(pt_current.y as usize, pt_current.x as usize)] = mu_fuse;
+        self.cov_data[(pt_current.y as usize, pt_current.x as usize)] = sigma_fuse2;
     }
 
     fn compute_current_ref_r_t(&self) -> (Matrix3x4<f64>, Matrix3x4<f64>) {
