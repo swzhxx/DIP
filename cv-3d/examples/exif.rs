@@ -13,6 +13,5 @@ fn main() -> Result<()> {
             f.display_value().with_unit(&exif_info)
         );
     }
-
     Ok(())
 }
