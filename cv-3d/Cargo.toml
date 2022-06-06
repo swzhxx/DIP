@@ -26,6 +26,9 @@ name = "kiss_3d_tutorial"
 [[example]]
 name = "kiss_3d_point"
 
+[[example]]
+name = "app_cv"
+
 [dependencies]
 anyhow = "1"
 cv-convert = {version = "0.18.0", features = ["full"]}
