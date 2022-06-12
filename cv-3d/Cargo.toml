@@ -29,8 +29,12 @@ name = "kiss_3d_point"
 [[example]]
 name = "app_cv"
 
+[[example]]
+name = "bevy_t1"
+
 [dependencies]
 anyhow = "1"
+bevy = "0.7"
 cv-convert = {version = "0.18.0", features = ["full"]}
 image = "0.24.2"
 kamadak-exif = "0.5.4"
