@@ -1,0 +1,12 @@
+[package]
+edition = "2021"
+name = "bevy_surface_resconstruct"
+version = "0.1.0"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+anyhow = "1"
+bevy = "0.7"
+bevy-inspector-egui = "0.11"
+bevy_obj = "0.7.0"

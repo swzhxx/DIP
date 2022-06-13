@@ -1,3 +1,5 @@
+[workspace]
+members = ["bevy_surface_resconstruct"]
 [package]
 edition = "2021"
 name = "cv-3d"
@@ -35,6 +37,8 @@ name = "bevy_t1"
 [dependencies]
 anyhow = "1"
 bevy = "0.7"
+bevy-inspector-egui = "0.11"
+bevy_obj = "0.7.0"
 cv-convert = {version = "0.18.0", features = ["full"]}
 image = "0.24.2"
 kamadak-exif = "0.5.4"
