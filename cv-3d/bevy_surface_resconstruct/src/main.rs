@@ -1,4 +1,5 @@
 mod denoise_plugin;
+mod half_edge;
 mod init;
 mod orbit_controls;
 use bevy::{asset::AssetServerSettings, prelude::*};
