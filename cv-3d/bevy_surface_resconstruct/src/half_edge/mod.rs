@@ -1,9 +1,11 @@
+use std::borrow::Borrow;
+
 use bevy::{
     prelude::Mesh,
     render::mesh::{Indices, MeshVertexAttributeId},
 };
 use cgmath::Point3;
-use half_edge_mesh::HalfEdgeMesh;
+use half_edge_mesh::{Edge, HalfEdgeMesh, Ptr, Vert};
 
 pub struct SurfaceHalfEdge<'a> {
     mesh: &'a Mesh,
@@ -25,8 +27,6 @@ impl<'a> SurfaceHalfEdge<'a> {
     }
 
     fn mesh_point3_vertices(mesh: &Mesh) -> Vec<Point3<f32>> {
-        // let vertices = mesh.count_vertices();
-        // let v = vec![];
         let vertex = mesh.attribute(Mesh::ATTRIBUTE_POSITION).unwrap();
         let vertex = match vertex {
             bevy::render::mesh::VertexAttributeValues::Float32x3(vertex) => vertex
@@ -41,13 +41,22 @@ impl<'a> SurfaceHalfEdge<'a> {
         let indices = mesh.indices().unwrap();
         let result = match indices {
             bevy::render::mesh::Indices::U32(indices) => {
-                let mut result = vec![];
+                let mut result: Vec<Vec<usize>> = vec![];
                 for i in 0..indices.len() {
-                    if result.len() % 3 == 0 {
-                        let mut item = vec![];
+                    if i % 3 == 0 {
+                        let item = vec![];
+                        {
+                            match result.last() {
+                                Some(item) => {
+                                    debug_assert!(item.len() == 3, "face must be 3 vertex");
+                                }
+                                None => {}
+                            }
+                        }
+
                         result.push(item);
                     }
-                    result.last_mut().unwrap().push(i);
+                    result.last_mut().unwrap().push(indices[i] as usize);
                 }
                 result
                     .iter()
@@ -60,7 +69,46 @@ impl<'a> SurfaceHalfEdge<'a> {
         };
         result
     }
-    fn half_edge(&self) -> &HalfEdgeMesh {
+    pub fn half_edge(&self) -> &HalfEdgeMesh {
         &self.half_edge
+    }
+}
+
+pub trait IsOnBounday {
+    fn is_on_boundary(&self) -> bool;
+}
+
+impl IsOnBounday for Vert {
+    fn is_on_boundary(&self) -> bool {
+        let edge = {
+            match self.edge.upgrade() {
+                Some(e) => e,
+                None => return true,
+            }
+        };
+
+        let edge_pair = &(*edge).borrow().pair;
+        if edge_pair.as_ref().is_none() {
+            return true;
+        }
+        let face = (*edge).borrow().face.upgrade();
+        if face.is_none() {
+            return true;
+        }
+        let edge_pair = edge_pair.upgrade();
+        if edge_pair.is_none() {
+            return true;
+        }
+        let face2 = (*edge_pair.unwrap()).borrow().face.upgrade();
+        if face2.is_none() {
+            return true;
+        }
+        let face = (*face.unwrap()).borrow().id;
+        let face2 = (*face2.unwrap()).borrow().id;
+        if face == face2 {
+            false
+        } else {
+            true
+        }
     }
 }

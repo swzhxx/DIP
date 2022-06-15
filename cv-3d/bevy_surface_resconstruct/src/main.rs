@@ -18,6 +18,5 @@ fn main() {
         })
         .add_plugin(SurfaceDefaultPlugin)
         .add_plugin(DenoisePlugin)
-        // .add_system(hello_world)
         .run();
 }

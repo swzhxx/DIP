@@ -37,8 +37,14 @@ impl DenoisePlugin {
             }
             if let Some(bunny_mesh) = meshes.get(&bunny_obj_handle.0) {
                 println!("vertices {:?}", bunny_mesh.count_vertices());
-                println!("indices {:?}", bunny_mesh.indices().unwrap().len());
-                SurfaceHalfEdge::new(bunny_mesh);
+                // println!("indices {:?}", bunny_mesh.indices().unwrap());
+                let surface_half_edge = SurfaceHalfEdge::new(bunny_mesh);
+
+                surface_half_edge
+                    .half_edge()
+                    .edges
+                    .values()
+                    .for_each(|e| todo!());
             }
         }
     }
@@ -50,7 +56,7 @@ impl DenoisePlugin {
         mut materials: ResMut<Assets<StandardMaterial>>,
     ) {
         wireframe_config.global = false;
-        let mesh_handle = asset_server.load("stanford-bunny.obj");
+        let mesh_handle = asset_server.load("Cat_head.obj");
         commands
             .spawn_bundle(PbrBundle {
                 mesh: mesh_handle.clone(),
