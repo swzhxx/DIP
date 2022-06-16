@@ -4,7 +4,7 @@ use bevy::{
     pbr::StandardMaterial,
     prelude::{AssetServer, Plugin},
 };
-use rust_3d::{EId, HalfEdge};
+// use rust_3d::{EId, HalfEdge};
 
 use crate::half_edge::SurfaceHalfEdge;
 
@@ -36,15 +36,12 @@ impl DenoisePlugin {
                 continue;
             }
             if let Some(bunny_mesh) = meshes.get(&bunny_obj_handle.0) {
-                println!("vertices {:?}", bunny_mesh.count_vertices());
-                // println!("indices {:?}", bunny_mesh.indices().unwrap());
                 let surface_half_edge = SurfaceHalfEdge::new(bunny_mesh);
-
-                surface_half_edge
-                    .half_edge()
-                    .edges
-                    .values()
-                    .for_each(|e| todo!());
+                // surface_half_edge
+                //     .half_edge()
+                //     .edges
+                //     .values()
+                //     .for_each(|e| todo!());
             }
         }
     }

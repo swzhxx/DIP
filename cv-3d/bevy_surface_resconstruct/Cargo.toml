@@ -10,13 +10,8 @@ anyhow = "1"
 bevy = "0.7"
 bevy-inspector-egui = "0.11"
 bevy_obj = "0.7.0"
-cgmath = "0.16.1"
+# cgmath = "0.16.1"
 half_edge_mesh = "1.1.8"
-rust-3d = "0.34.0"
-# Enable only a small amount of optimization in debug mode
-[profile.dev]
-opt-level = 1
-
-# Enable high optimizations for dependencies (incl. Bevy), but not for our code:
-[profile.dev.package."*"]
-opt-level = 3
+nalgebra = "0.30.1"
+plexus = {version = "0.0.11", features = ["geometry-nalgebra"]}
+# rust-3d = "0.34.0"
