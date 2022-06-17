@@ -37,11 +37,8 @@ impl DenoisePlugin {
             }
             if let Some(bunny_mesh) = meshes.get(&bunny_obj_handle.0) {
                 let surface_half_edge = SurfaceHalfEdge::new(bunny_mesh);
-                // surface_half_edge
-                //     .half_edge()
-                //     .edges
-                //     .values()
-                //     .for_each(|e| todo!());
+                let count = surface_half_edge.half_edge().vertex_count();
+                println!("{:?}", count)
             }
         }
     }

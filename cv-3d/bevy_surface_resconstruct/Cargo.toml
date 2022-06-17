@@ -10,8 +10,8 @@ anyhow = "1"
 bevy = "0.7"
 bevy-inspector-egui = "0.11"
 bevy_obj = "0.7.0"
-# cgmath = "0.16.1"
+cgmath = "0.17.0"
 half_edge_mesh = "1.1.8"
 nalgebra = "0.30.1"
-plexus = {version = "0.0.11", features = ["geometry-nalgebra"]}
+plexus = {version = "0.0.11", features = ["geometry-cgmath"]}
 # rust-3d = "0.34.0"

@@ -4,7 +4,8 @@ use bevy::{
     prelude::Mesh,
     render::mesh::{Indices, MeshVertexAttributeId},
 };
-use nalgebra::Point3;
+
+use cgmath::Point3;
 use plexus::{
     buffer::{Flat3, MeshBuffer},
     graph::MeshGraph,
@@ -15,7 +16,7 @@ pub struct SurfaceHalfEdge<'a> {
     mesh: &'a Mesh,
     // vertices: Vec<(f32, f32, f32)>,
     // indices: Vec<usize>,
-    half_edge: MeshGraph,
+    half_edge: MeshGraph<Point3<f32>>,
 }
 impl<'a> SurfaceHalfEdge<'a> {
     pub fn new(mesh: &'a Mesh) -> Self {
@@ -48,7 +49,7 @@ impl<'a> SurfaceHalfEdge<'a> {
         let indices = mesh.indices().unwrap();
         let result = match indices {
             bevy::render::mesh::Indices::U32(indices) => {
-                let mut result: Vec<usize> = vec![];
+                let mut result: Vec<u64> = vec![];
                 for i in 0..indices.len() {
                     result.push(indices[i] as u64);
                 }
@@ -60,7 +61,7 @@ impl<'a> SurfaceHalfEdge<'a> {
         };
         result
     }
-    pub fn half_edge(&self) -> &MeshGraph {
+    pub fn half_edge(&self) -> &MeshGraph<Point3<f32>> {
         &self.half_edge
     }
 }
@@ -106,7 +107,9 @@ impl<'a> SurfaceHalfEdge<'a> {
 
 #[cfg(test)]
 mod test {
-    use nalgebra::{Point2, Point3, Vector3};
+    // use nalgebra::{Point2, Point3, Vector3};
+
+    use cgmath::Point3;
     use plexus::prelude::*;
     use plexus::{
         buffer::{Flat3, Flat4, MeshBuffer},
@@ -525,8 +528,8 @@ mod test {
         });
 
         let buffer = MeshBuffer::<Flat3, _>::from_raw_buffers(indices, point3).unwrap();
-        let mut graph = MeshGraph::<Vector3<f64>>::from_mesh_buffer(buffer).unwrap();
-
+        let mut graph = MeshGraph::<Point3<f64>>::from_mesh_buffer(buffer).unwrap();
+        println!("{:?}", graph.vertex_count());
         // let buffer = MeshBuffer::<Flat4, _>::from_raw_buffers(
         //     vec![0u64, 1, 2, 3],
         //     vec![(0.0f64, 0.0), (1.0, 0.0), (1.0, 1.0), (0.0, 1.0)],

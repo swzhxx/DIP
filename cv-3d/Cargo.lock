@@ -812,6 +812,7 @@ dependencies = [
  "bevy",
  "bevy-inspector-egui",
  "bevy_obj",
+ "cgmath 0.17.0",
  "half_edge_mesh",
  "nalgebra 0.30.1",
  "plexus",
@@ -1143,6 +1144,17 @@ dependencies = [
  "approx 0.1.1",
  "num-traits 0.1.43",
  "rand 0.4.6",
+]
+
+[[package]]
+name = "cgmath"
+version = "0.17.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "283944cdecc44bf0b8dd010ec9af888d3b4f142844fdbe026c20ef68148d6fe7"
+dependencies = [
+ "approx 0.3.2",
+ "num-traits 0.2.15",
+ "rand 0.6.5",
 ]
 
 [[package]]
@@ -2368,7 +2380,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "4adec3d7bf5498414b3828ed29297e6c326b2e033799262a1b700557bc3fc336"
 dependencies = [
  "approx 0.1.1",
- "cgmath",
+ "cgmath 0.16.1",
 ]
 
 [[package]]
@@ -3882,6 +3894,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "7999fa0f684f4a21d2f3e7c09d9e27a708baea7525ba41de661151b5bd5fb552"
 dependencies = [
  "arrayvec 0.4.12",
+ "cgmath 0.17.0",
  "decorum",
  "derivative 1.0.4",
  "either",
