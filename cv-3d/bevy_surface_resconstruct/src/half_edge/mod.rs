@@ -5,53 +5,50 @@ use bevy::{
     render::mesh::{Indices, MeshVertexAttributeId},
 };
 
-use cgmath::Point3;
-use plexus::{
-    buffer::{Flat3, MeshBuffer},
-    graph::MeshGraph,
-    FromRawBuffers,
-};
+use tri_mesh::MeshBuilder;
 
 pub struct SurfaceHalfEdge<'a> {
     mesh: &'a Mesh,
-    // vertices: Vec<(f32, f32, f32)>,
-    // indices: Vec<usize>,
-    half_edge: MeshGraph<Point3<f32>>,
+    half_edge: tri_mesh::prelude::Mesh,
 }
 impl<'a> SurfaceHalfEdge<'a> {
     pub fn new(mesh: &'a Mesh) -> Self {
         let vertices = Self::mesh_point3_vertices(mesh);
-        // println!("vertices {:?}", vertices);
         let indices = Self::mesh_half_edge_indices(mesh);
-        println!("indices {:?}", indices);
-        let buffer = MeshBuffer::<Flat3, _>::from_raw_buffers(indices, vertices).unwrap();
-        let half_edge = MeshGraph::<Point3<f32>>::from_mesh_buffer(buffer).unwrap();
+        let half_edge_mesh = MeshBuilder::new()
+            .with_indices(indices)
+            .with_positions(vertices)
+            .build()
+            .unwrap();
         Self {
-            // vertices,
             mesh,
-            // indices,
-            half_edge,
+            half_edge: half_edge_mesh,
         }
     }
 
-    fn mesh_point3_vertices(mesh: &Mesh) -> Vec<(f32, f32, f32)> {
+    fn mesh_point3_vertices(mesh: &Mesh) -> Vec<f64> {
         let vertex = mesh.attribute(Mesh::ATTRIBUTE_POSITION).unwrap();
         let vertex = match vertex {
-            bevy::render::mesh::VertexAttributeValues::Float32x3(vertex) => vertex
-                .iter()
-                .map(|v| (v[0], v[1], v[2]))
-                .collect::<Vec<(f32, f32, f32)>>(),
+            bevy::render::mesh::VertexAttributeValues::Float32x3(vertex) => {
+                vertex.iter().fold(vec![], |mut acc, v| {
+                    acc.push(v[0] as f64);
+                    acc.push(v[1] as f64);
+                    acc.push(v[2] as f64);
+                    acc
+                })
+            }
+
             _ => unreachable!(),
         };
         vertex
     }
-    fn mesh_half_edge_indices(mesh: &Mesh) -> Vec<u64> {
+    fn mesh_half_edge_indices(mesh: &Mesh) -> Vec<u32> {
         let indices = mesh.indices().unwrap();
         let result = match indices {
             bevy::render::mesh::Indices::U32(indices) => {
-                let mut result: Vec<u64> = vec![];
+                let mut result: Vec<u32> = vec![];
                 for i in 0..indices.len() {
-                    result.push(indices[i] as u64);
+                    result.push(indices[i] as u32);
                 }
                 result
             }
@@ -61,7 +58,7 @@ impl<'a> SurfaceHalfEdge<'a> {
         };
         result
     }
-    pub fn half_edge(&self) -> &MeshGraph<Point3<f32>> {
+    pub fn half_edge(&self) -> &tri_mesh::prelude::Mesh {
         &self.half_edge
     }
 }
@@ -107,15 +104,8 @@ impl<'a> SurfaceHalfEdge<'a> {
 
 #[cfg(test)]
 mod test {
-    // use nalgebra::{Point2, Point3, Vector3};
 
-    use cgmath::Point3;
-    use plexus::prelude::*;
-    use plexus::{
-        buffer::{Flat3, Flat4, MeshBuffer},
-        graph::MeshGraph,
-        FromRawBuffers,
-    };
+    use tri_mesh::MeshBuilder;
 
     #[test]
     fn test_half_edge_mesh() {
@@ -257,10 +247,14 @@ mod test {
             [-13.5, 8.0, 27.5],
         ]
         .iter()
-        .map(|item| (item[0] as f64, item[1] as f64, item[2] as f64))
-        .collect::<Vec<(f64, f64, f64)>>();
-        let mut a = vec![];
-        let indices: Vec<u64> = [
+        .fold(vec![], |mut acc, item| {
+            acc.push(item[0]);
+            acc.push(item[1]);
+            acc.push(item[2]);
+            acc
+        });
+        let l = point3.len();
+        let indices: Vec<u32> = [
             [1, 0, 2],
             [1, 3, 0],
             [5, 4, 6],
@@ -520,21 +514,18 @@ mod test {
             [39, 21, 40],
         ]
         .iter()
-        .fold(a, |mut acc, v| {
-            acc.push(v[0] as u64);
-            acc.push(v[1] as u64);
-            acc.push(v[2] as u64);
+        .fold(vec![], |mut acc, v| {
+            acc.push(v[0] as u32);
+            acc.push(v[1] as u32);
+            acc.push(v[2] as u32);
             acc
         });
-
-        let buffer = MeshBuffer::<Flat3, _>::from_raw_buffers(indices, point3).unwrap();
-        let mut graph = MeshGraph::<Point3<f64>>::from_mesh_buffer(buffer).unwrap();
-        println!("{:?}", graph.vertex_count());
-        // let buffer = MeshBuffer::<Flat4, _>::from_raw_buffers(
-        //     vec![0u64, 1, 2, 3],
-        //     vec![(0.0f64, 0.0), (1.0, 0.0), (1.0, 1.0), (0.0, 1.0)],
-        // )
-        // .unwrap();
-        // let mut graph = MeshGraph::<Point2<f64>>::from_mesh_buffer(buffer).unwrap();
+        let mesh = MeshBuilder::new()
+            .with_indices(indices)
+            .with_positions(point3)
+            .build()
+            .unwrap();
+        let positions = mesh.positions_buffer();
+        assert_eq!(l, positions.len());
     }
 }
