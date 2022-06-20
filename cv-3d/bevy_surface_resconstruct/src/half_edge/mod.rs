@@ -5,14 +5,20 @@ use bevy::{
     render::mesh::{Indices, MeshVertexAttributeId},
 };
 
-use tri_mesh::MeshBuilder;
+use tri_mesh::{
+    prelude::{Vector3, VertexID, Walker},
+    MeshBuilder,
+};
 
-pub struct SurfaceHalfEdgeMut<'a> {
-    mesh: &'a mut Mesh,
+pub struct SurfaceHalfEdge {
     half_edge: tri_mesh::prelude::Mesh,
 }
-impl<'a> SurfaceHalfEdgeMut<'a> {
-    pub fn new(mesh: &'a mut Mesh) -> Self {
+
+unsafe impl Sync for SurfaceHalfEdge {}
+unsafe impl Send for SurfaceHalfEdge {}
+
+impl SurfaceHalfEdge {
+    pub fn new(mesh: &Mesh) -> Self {
         let vertices = Self::mesh_point3_vertices(mesh);
         let indices = Self::mesh_half_edge_indices(mesh);
         let half_edge_mesh = MeshBuilder::new()
@@ -21,11 +27,20 @@ impl<'a> SurfaceHalfEdgeMut<'a> {
             .build()
             .unwrap();
         Self {
-            mesh,
             half_edge: half_edge_mesh,
         }
     }
-
+    pub fn compute_vertext_normal(&self, vertex_id: VertexID) -> f64 {
+        let mut walker = self.half_edge.walker_from_vertex(vertex_id);
+        loop {
+            if let Some(edge) = walker.halfedge_id() {
+            } else {
+                break;
+            }
+            walker = walker.into_next();
+        }
+        todo!()
+    }
     fn mesh_point3_vertices(mesh: &Mesh) -> Vec<f64> {
         let vertex = mesh.attribute(Mesh::ATTRIBUTE_POSITION).unwrap();
         let vertex = match vertex {
@@ -63,44 +78,13 @@ impl<'a> SurfaceHalfEdgeMut<'a> {
     }
 }
 
-// pub trait IsOnBounday {
-//     fn is_on_boundary(&self) -> bool;
-// }
+fn compute_sector_normal(walker: Walker, vertex_id: VertexID) -> Vector3<f64> {
+    todo!()
+}
 
-// impl IsOnBounday for Vert {
-//     fn is_on_boundary(&self) -> bool {
-//         let edge = {
-//             match self.edge.upgrade() {
-//                 Some(e) => e,
-//                 None => return true,
-//             }
-//         };
-
-//         let edge_pair = &(*edge).borrow().pair;
-//         if edge_pair.as_ref().is_none() {
-//             return true;
-//         }
-//         let face = (*edge).borrow().face.upgrade();
-//         if face.is_none() {
-//             return true;
-//         }
-//         let edge_pair = edge_pair.upgrade();
-//         if edge_pair.is_none() {
-//             return true;
-//         }
-//         let face2 = (*edge_pair.unwrap()).borrow().face.upgrade();
-//         if face2.is_none() {
-//             return true;
-//         }
-//         let face = (*face.unwrap()).borrow().id;
-//         let face2 = (*face2.unwrap()).borrow().id;
-//         if face == face2 {
-//             false
-//         } else {
-//             true
-//         }
-//     }
-// }
+fn compute_sector_angle(walker: Walker, vertex_id: VertexID) -> f64 {
+    todo!()
+}
 
 #[cfg(test)]
 mod test {

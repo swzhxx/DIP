@@ -6,7 +6,7 @@ use bevy::{
 };
 // use rust_3d::{EId, HalfEdge};
 
-use crate::half_edge::SurfaceHalfEdgeMut;
+use crate::half_edge::SurfaceHalfEdge;
 
 pub struct DenoisePlugin;
 
@@ -19,7 +19,7 @@ impl Plugin for DenoisePlugin {
 }
 
 #[derive(Component)]
-struct BunnyObj(Handle<Mesh>, Option<f32>);
+struct BunnyObj(Handle<Mesh>, Option<SurfaceHalfEdge>);
 
 impl DenoisePlugin {
     fn denoise() {
@@ -29,14 +29,15 @@ impl DenoisePlugin {
     fn to_half_edge(
         mut commands: Commands,
         mut meshes: ResMut<Assets<Mesh>>,
-        query: Query<&mut BunnyObj>,
+        mut query: Query<&mut BunnyObj>,
     ) {
-        for bunny_obj_handle in query.iter() {
+        for mut bunny_obj_handle in query.iter_mut() {
             if bunny_obj_handle.1.is_some() {
                 continue;
             }
             if let Some(bunny_mesh) = meshes.get_mut(&bunny_obj_handle.0) {
-                let surface_half_edge = SurfaceHalfEdgeMut::new(bunny_mesh);
+                let surface_half_edge = SurfaceHalfEdge::new(bunny_mesh);
+                bunny_obj_handle.1 = Some(surface_half_edge)
             }
         }
     }
