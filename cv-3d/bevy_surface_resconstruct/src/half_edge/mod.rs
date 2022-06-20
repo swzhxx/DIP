@@ -7,12 +7,12 @@ use bevy::{
 
 use tri_mesh::MeshBuilder;
 
-pub struct SurfaceHalfEdge<'a> {
-    mesh: &'a Mesh,
+pub struct SurfaceHalfEdgeMut<'a> {
+    mesh: &'a mut Mesh,
     half_edge: tri_mesh::prelude::Mesh,
 }
-impl<'a> SurfaceHalfEdge<'a> {
-    pub fn new(mesh: &'a Mesh) -> Self {
+impl<'a> SurfaceHalfEdgeMut<'a> {
+    pub fn new(mesh: &'a mut Mesh) -> Self {
         let vertices = Self::mesh_point3_vertices(mesh);
         let indices = Self::mesh_half_edge_indices(mesh);
         let half_edge_mesh = MeshBuilder::new()
