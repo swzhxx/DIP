@@ -5,8 +5,9 @@ use bevy::{
     render::mesh::{Indices, MeshVertexAttributeId},
 };
 
+use bevy_inspector_egui::egui::epaint::Vertex;
 use tri_mesh::{
-    prelude::{Vector3, VertexID, Walker},
+    prelude::{HalfEdgeID, Mesh, Vector3, VertexID, Walker},
     MeshBuilder,
 };
 
@@ -30,15 +31,11 @@ impl SurfaceHalfEdge {
             half_edge: half_edge_mesh,
         }
     }
-    pub fn compute_vertext_normal(&self, vertex_id: VertexID) -> f64 {
-        let mut walker = self.half_edge.walker_from_vertex(vertex_id);
-        loop {
-            if let Some(edge) = walker.halfedge_id() {
-            } else {
-                break;
-            }
-            walker = walker.into_next();
-        }
+
+    pub fn minmial_surface(&self, vertex_id: VertexID) -> Vector3<f64> {
+        todo!()
+    }
+    pub fn mean_curvature(&self, vertex_id: VertexID) -> Vector3<f64> {
         todo!()
     }
     fn mesh_point3_vertices(mesh: &Mesh) -> Vec<f64> {
@@ -78,13 +75,72 @@ impl SurfaceHalfEdge {
     }
 }
 
-fn compute_sector_normal(walker: Walker, vertex_id: VertexID) -> Vector3<f64> {
+fn laplace_beltrami(mesh: &tri_mesh::prelude::Mesh, vertex_id: VertexID) -> Vector3<f64> {
+    // let normal = mesh.vertex_normal(vertex_id);
+    let laplace = Vector3::new(0., 0., 0.);
+    if !mesh.is_vertex_on_boundary(vertex_id) {
+        let mut weight = 0.;
+        let mut total_weight = 0.;
+        let mut walker = mesh.walker_from_vertex(vertex_id);
+        let p = mesh.vertex_position(vertex_id);
+
+        loop {
+            match walker.halfedge_id() {
+                Some(edge_id) => {
+                    weight = contan_weight(mesh, edge_id);
+                    total_weight += weight;
+                    laplace += weight * mesh.vertex_position(walker.vertex_id().unwrap());
+                    walker = walker.into_next();
+                }
+                None => break,
+            }
+            if walker.vertex_id().unwrap() == vertex_id {
+                break;
+            }
+        }
+        laplace -= total_weight * mesh.vertex_position(vertex_id);
+        // laplace vornoi area
+        laplace /= 2. * vornoi_area(mesh, vertex_id);
+        todo!();
+        laplace
+    } else {
+        laplace
+    }
+}
+
+fn contan_weight(mesh: &tri_mesh::prelude::Mesh, edge_id: HalfEdgeID) -> f64 {
+    let weight = 0.;
+    let walker = mesh.walker_from_halfedge(edge_id);
+    let vertex_id = walker.vertex_id().unwrap();
+    for nb_vertex_id in mesh.vertex_halfedge_iter(vertex_id) {
+        let mut pp: VertexID;
+        let mut np: VertexID;
+        while true {}
+        while true {}
+    }
+    todo!();
+    weight
+}
+
+fn vornoi_area(mesh: &tri_mesh::prelude::Mesh, vertex_id: VertexID) -> f64 {
     todo!()
 }
 
-fn compute_sector_angle(walker: Walker, vertex_id: VertexID) -> f64 {
-    todo!()
-}
+// fn compute_sector_normal(
+//     walker: Walker,
+//     vertex_id: VertexID,
+//     mesh: &tri_mesh::prelude::Mesh,
+// ) -> Vector3<f64> {
+//     let p = mesh.vertex_position(vertex_id);
+//     let p_f_vertex_id = walker.into_next().vertex_id().unwrap();
+//     let p_t_vertex_id = walker.into_next().vertex_id().unwrap();
+
+//     todo!()
+// }
+
+// fn compute_sector_angle(walker: Walker, vertex_id: VertexID) -> f64 {
+//     todo!()
+// }
 
 #[cfg(test)]
 mod test {
