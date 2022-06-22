@@ -7,7 +7,7 @@ use bevy::{
 
 use bevy_inspector_egui::egui::epaint::Vertex;
 use tri_mesh::{
-    prelude::{HalfEdgeID, Mesh, Vector3, VertexID, Walker},
+    prelude::{HalfEdgeID, InnerSpace, Vector3, VertexID, Walker},
     MeshBuilder,
 };
 
@@ -77,7 +77,7 @@ impl SurfaceHalfEdge {
 
 fn laplace_beltrami(mesh: &tri_mesh::prelude::Mesh, vertex_id: VertexID) -> Vector3<f64> {
     // let normal = mesh.vertex_normal(vertex_id);
-    let laplace = Vector3::new(0., 0., 0.);
+    let mut laplace = Vector3::new(0., 0., 0.);
     if !mesh.is_vertex_on_boundary(vertex_id) {
         let mut weight = 0.;
         let mut total_weight = 0.;
@@ -112,18 +112,63 @@ fn contan_weight(mesh: &tri_mesh::prelude::Mesh, edge_id: HalfEdgeID) -> f64 {
     let weight = 0.;
     let walker = mesh.walker_from_halfedge(edge_id);
     let vertex_id = walker.vertex_id().unwrap();
-    for nb_vertex_id in mesh.vertex_halfedge_iter(vertex_id) {
+    let mut weight = 0.;
+    let v_position = mesh.vertex_position(vertex_id);
+
+    for nb_edge_id in mesh.vertex_halfedge_iter(vertex_id) {
+        let nb_vertex_id = mesh.walker_from_halfedge(nb_edge_id).vertex_id().unwrap();
         let mut pp: VertexID;
         let mut np: VertexID;
-        while true {}
-        while true {}
+        let mut walker = mesh.walker_from_vertex(nb_vertex_id);
+        // let adjve = walker.halfedge_id().unwrap();
+        loop {
+            if walker.end().is_some() && walker.end().unwrap() == vertex_id {
+                pp = walker.end().unwrap();
+                break;
+            } else {
+                walker = walker.into_twin().into_next();
+            }
+        }
+        loop {
+            let next_end = walker.as_next().end();
+            if next_end.is_some() && next_end.unwrap() == vertex_id {
+                np = walker.end().unwrap();
+                break;
+            } else {
+                walker = walker.into_next();
+            }
+        }
+
+        let adj_position = mesh.vertex_position(vertex_id);
+        let pp_position = mesh.vertex_position(pp);
+        let np_position = mesh.vertex_position(np);
+        let cot_alpha = cot_vertor(&(adj_position - &pp_position), &(v_position - &pp_position));
+        let cot_beta = cot_vertor(&(adj_position - &np_position), &(v_position - &np_position));
+        weight += cot_alpha + cot_beta;
     }
-    todo!();
     weight
 }
 
 fn vornoi_area(mesh: &tri_mesh::prelude::Mesh, vertex_id: VertexID) -> f64 {
     todo!()
+}
+
+fn cot_vertor(v1: &Vector3<f64>, v2: &Vector3<f64>) -> f64 {
+    let cos_theta = v1.dot(v2.clone()) / (v1.magnitude() * v2.magnitude());
+    let theta = cos_theta.acos();
+    1. / theta.tan()
+}
+
+pub trait End {
+    type Item;
+    fn end(&self) -> Self::Item;
+}
+
+impl End for Walker<'_> {
+    type Item = Option<VertexID>;
+    fn end(&self) -> Self::Item {
+        self.clone().as_twin().as_next().vertex_id()
+    }
 }
 
 // fn compute_sector_normal(
