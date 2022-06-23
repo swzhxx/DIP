@@ -101,7 +101,7 @@ fn laplace_beltrami(mesh: &tri_mesh::prelude::Mesh, vertex_id: VertexID) -> Vect
         laplace -= total_weight * mesh.vertex_position(vertex_id);
         // laplace vornoi area
         laplace /= 2. * vornoi_area(mesh, vertex_id);
-        todo!();
+
         laplace
     } else {
         laplace
@@ -150,7 +150,41 @@ fn contan_weight(mesh: &tri_mesh::prelude::Mesh, edge_id: HalfEdgeID) -> f64 {
 }
 
 fn vornoi_area(mesh: &tri_mesh::prelude::Mesh, vertex_id: VertexID) -> f64 {
-    todo!()
+    // let mut walker = mesh.walker_from_vertex(vertex_id);
+    let mut area = 0.;
+    for nb_edge_id in mesh.vertex_halfedge_iter(vertex_id) {
+        let mut walker = mesh.walker_from_halfedge(nb_edge_id);
+        let q = walker.vertex_id().unwrap();
+        let q_position = mesh.vertex_position(q);
+        let r = walker.as_next().vertex_id().unwrap();
+        let r_position = mesh.vertex_position(r);
+        let p = walker.as_next().vertex_id().unwrap();
+        let p_position = mesh.vertex_position(p);
+
+        let pq = p_position - q_position;
+        let qr = r_position - q_position;
+        let pr = r_position - p_position;
+
+        let tri_area = pq.cross(pr.clone()).magnitude();
+
+        let dotp = pq.dot(pr.clone());
+        let dotq = qr.dot(pq.clone());
+        let dotr = qr.dot(pr.clone());
+
+        // angle at p is obtuse
+        if dotp < 0. {
+            area += 0.25 * tri_area
+        }
+        // angle at q or r obtuse
+        else if dotq < 0. || dotr < 0. {
+            area += 0.125 * tri_area
+        } else {
+            let cotq = dotq / tri_area;
+            let cotr = dotr / tri_area;
+            area += 0.125 * (pr.magnitude() * cotq + pq.magnitude() * cotr);
+        }
+    }
+    area
 }
 
 fn cot_vertor(v1: &Vector3<f64>, v2: &Vector3<f64>) -> f64 {
