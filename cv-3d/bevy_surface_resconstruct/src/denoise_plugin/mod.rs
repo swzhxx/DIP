@@ -33,7 +33,32 @@ impl DenoisePlugin {
     ) {
         for mut bunny_obj_handle in query.iter_mut() {
             if bunny_obj_handle.1.is_some() {
-                continue;
+                let surface = bunny_obj_handle.1.as_mut().unwrap();
+                for vertex in surface.half_edge_mut().vertex_iter() {
+                    if surface.half_edge().is_vertex_on_boundary(vertex) {
+                        continue;
+                    }
+                    surface.minmial_surface(vertex);
+                }
+                let postion_buffer = surface
+                    .half_edge()
+                    .positions_buffer()
+                    .iter()
+                    .enumerate()
+                    .fold(vec![], |mut acc, (usize, value)| {
+                        if usize % 3 == 0 {
+                            acc.push(vec![])
+                        }
+                        acc.last_mut().unwrap().push(*value as f32);
+                        acc
+                    })
+                    .iter()
+                    .map(|item| [item[0], item[1], item[2]])
+                    .collect::<Vec<[f32; 3]>>();
+                meshes
+                    .get_mut(&bunny_obj_handle.0)
+                    .unwrap()
+                    .insert_attribute(Mesh::ATTRIBUTE_POSITION, postion_buffer.clone());
             }
             if let Some(bunny_mesh) = meshes.get_mut(&bunny_obj_handle.0) {
                 let surface_half_edge = SurfaceHalfEdge::new(bunny_mesh);
@@ -49,7 +74,7 @@ impl DenoisePlugin {
         mut materials: ResMut<Assets<StandardMaterial>>,
     ) {
         wireframe_config.global = false;
-        let mesh_handle = asset_server.load("Cat_head.obj");
+        let mesh_handle = asset_server.load("Nefertiti_face.obj");
         commands
             .spawn_bundle(PbrBundle {
                 mesh: mesh_handle.clone(),

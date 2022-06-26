@@ -32,11 +32,23 @@ impl SurfaceHalfEdge {
         }
     }
 
-    pub fn minmial_surface(&self, vertex_id: VertexID) -> Vector3<f64> {
-        todo!()
+    pub fn minmial_surface(&mut self, vertex_id: VertexID) {
+        let position = self.half_edge.vertex_position(vertex_id);
+        let lambda = 0.1;
+        let n = self.half_edge.vertex_normal(vertex_id);
+        let mean_curvature = self.mean_curvature(vertex_id);
+        let p = position + lambda * mean_curvature.cross(n.clone());
+        self.half_edge.move_vertex_to(vertex_id, p)
     }
     pub fn mean_curvature(&self, vertex_id: VertexID) -> Vector3<f64> {
-        todo!()
+        let normal = self.half_edge.vertex_normal(vertex_id);
+        let l = laplace_beltrami(&self.half_edge, vertex_id);
+        let curvature = l.normalize() / 2.;
+        if normal.dot(l.clone()) > 0. {
+            curvature
+        } else {
+            -1. * curvature
+        }
     }
     fn mesh_point3_vertices(mesh: &Mesh) -> Vec<f64> {
         let vertex = mesh.attribute(Mesh::ATTRIBUTE_POSITION).unwrap();
@@ -73,31 +85,39 @@ impl SurfaceHalfEdge {
     pub fn half_edge(&self) -> &tri_mesh::prelude::Mesh {
         &self.half_edge
     }
+    pub fn half_edge_mut(&mut self) -> &mut tri_mesh::prelude::Mesh {
+        &mut self.half_edge
+    }
 }
 
 fn laplace_beltrami(mesh: &tri_mesh::prelude::Mesh, vertex_id: VertexID) -> Vector3<f64> {
     // let normal = mesh.vertex_normal(vertex_id);
     let mut laplace = Vector3::new(0., 0., 0.);
+
     if !mesh.is_vertex_on_boundary(vertex_id) {
         let mut weight = 0.;
         let mut total_weight = 0.;
-        let mut walker = mesh.walker_from_vertex(vertex_id);
-        let p = mesh.vertex_position(vertex_id);
 
-        loop {
-            match walker.halfedge_id() {
-                Some(edge_id) => {
-                    weight = contan_weight(mesh, edge_id);
-                    total_weight += weight;
-                    laplace += weight * mesh.vertex_position(walker.vertex_id().unwrap());
-                    walker = walker.into_next();
-                }
-                None => break,
-            }
-            if walker.vertex_id().unwrap() == vertex_id {
-                break;
-            }
+        for half_edge_id in mesh.vertex_halfedge_iter(vertex_id) {
+            let mut walker = mesh.walker_from_halfedge(half_edge_id);
+            weight = contan_weight(mesh, half_edge_id);
+            total_weight += weight;
+            laplace += weight * mesh.vertex_position(walker.vertex_id().unwrap());
         }
+        // loop {
+        //     match walker.halfedge_id() {
+        //         Some(edge_id) => {
+        //             weight = contan_weight(mesh, edge_id);
+        //             total_weight += weight;
+        //             laplace += weight * mesh.vertex_position(walker.vertex_id().unwrap());
+        //             walker = walker.into_next();
+        //         }
+        //         None => break,
+        //     }
+        //     if walker.vertex_id().unwrap() == vertex_id {
+        //         break;
+        //     }
+        // }
         laplace -= total_weight * mesh.vertex_position(vertex_id);
         // laplace vornoi area
         laplace /= 2. * vornoi_area(mesh, vertex_id);
@@ -109,33 +129,36 @@ fn laplace_beltrami(mesh: &tri_mesh::prelude::Mesh, vertex_id: VertexID) -> Vect
 }
 
 fn contan_weight(mesh: &tri_mesh::prelude::Mesh, edge_id: HalfEdgeID) -> f64 {
-    let weight = 0.;
     let walker = mesh.walker_from_halfedge(edge_id);
     let vertex_id = walker.vertex_id().unwrap();
     let mut weight = 0.;
     let v_position = mesh.vertex_position(vertex_id);
-
+    println!("contan weight vertex_id : {:?}", vertex_id);
     for nb_edge_id in mesh.vertex_halfedge_iter(vertex_id) {
         let nb_vertex_id = mesh.walker_from_halfedge(nb_edge_id).vertex_id().unwrap();
-        let mut pp: VertexID;
-        let mut np: VertexID;
         let mut walker = mesh.walker_from_vertex(nb_vertex_id);
-        // let adjve = walker.halfedge_id().unwrap();
+        println!(" nb vertex id  {:?}", nb_vertex_id);
+        let pp: VertexID;
+        let np: VertexID;
+        if mesh.is_edge_on_boundary(nb_edge_id) {
+            continue;
+        }
         loop {
-            if walker.end().is_some() && walker.end().unwrap() == vertex_id {
-                pp = walker.end().unwrap();
+            println!(" loop 1 {:?}", walker.vertex_id().unwrap());
+            if walker.vertex_id().unwrap() == vertex_id {
+                pp = walker.clone().as_next().vertex_id().unwrap();
                 break;
             } else {
                 walker = walker.into_twin().into_next();
             }
         }
         loop {
-            let next_end = walker.as_next().end();
-            if next_end.is_some() && next_end.unwrap() == vertex_id {
-                np = walker.end().unwrap();
+            println!(" loop 2 {:?}", walker.vertex_id().unwrap());
+            if walker.clone().as_next().vertex_id().unwrap() == vertex_id {
+                np = walker.vertex_id().unwrap();
                 break;
             } else {
-                walker = walker.into_next();
+                walker = walker.into_twin().into_next();
             }
         }
 
@@ -193,17 +216,17 @@ fn cot_vertor(v1: &Vector3<f64>, v2: &Vector3<f64>) -> f64 {
     1. / theta.tan()
 }
 
-pub trait End {
-    type Item;
-    fn end(&self) -> Self::Item;
-}
+// pub trait End {
+//     type Item;
+//     fn end(&self) -> Self::Item;
+// }
 
-impl End for Walker<'_> {
-    type Item = Option<VertexID>;
-    fn end(&self) -> Self::Item {
-        self.clone().as_twin().as_next().vertex_id()
-    }
-}
+// impl End for Walker<'_> {
+//     type Item = Option<VertexID>;
+//     fn end(&self) -> Self::Item {
+//         self.clone().into_twin().vertex_id()
+//     }
+// }
 
 // fn compute_sector_normal(
 //     walker: Walker,
