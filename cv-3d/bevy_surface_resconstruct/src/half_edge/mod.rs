@@ -144,7 +144,11 @@ fn contan_weight(mesh: &tri_mesh::prelude::Mesh, edge_id: HalfEdgeID) -> f64 {
             continue;
         }
         loop {
-            println!(" loop 1 {:?}", walker.vertex_id().unwrap());
+            if walker.halfedge_id().is_none()
+                || mesh.is_edge_on_boundary(walker.halfedge_id().unwrap())
+            {
+                continue;
+            }
             if walker.vertex_id().unwrap() == vertex_id {
                 pp = walker.clone().as_next().vertex_id().unwrap();
                 break;
@@ -153,7 +157,11 @@ fn contan_weight(mesh: &tri_mesh::prelude::Mesh, edge_id: HalfEdgeID) -> f64 {
             }
         }
         loop {
-            println!(" loop 2 {:?}", walker.vertex_id().unwrap());
+            if walker.halfedge_id().is_none()
+                || mesh.is_edge_on_boundary(walker.halfedge_id().unwrap())
+            {
+                continue;
+            }
             if walker.clone().as_next().vertex_id().unwrap() == vertex_id {
                 np = walker.vertex_id().unwrap();
                 break;
