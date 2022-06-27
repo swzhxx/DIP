@@ -34,21 +34,15 @@ impl SurfaceHalfEdge {
 
     pub fn minmial_surface(&mut self, vertex_id: VertexID) {
         let position = self.half_edge.vertex_position(vertex_id);
-        let lambda = 0.1;
-        let n = self.half_edge.vertex_normal(vertex_id);
+        let lambda = 0.001;
         let mean_curvature = self.mean_curvature(vertex_id);
-        let p = position + lambda * mean_curvature.cross(n.clone());
+        let p = position - lambda * mean_curvature / 2.;
         self.half_edge.move_vertex_to(vertex_id, p)
     }
     pub fn mean_curvature(&self, vertex_id: VertexID) -> Vector3<f64> {
-        let normal = self.half_edge.vertex_normal(vertex_id);
-        let l = laplace_beltrami(&self.half_edge, vertex_id);
-        let curvature = l.normalize() / 2.;
-        if normal.dot(l.clone()) > 0. {
-            curvature
-        } else {
-            -1. * curvature
-        }
+        // let normal = self.half_edge.vertex_normal(vertex_id);
+        let curvature = laplace_beltrami(&self.half_edge, vertex_id);
+        curvature
     }
     fn mesh_point3_vertices(mesh: &Mesh) -> Vec<f64> {
         let vertex = mesh.attribute(Mesh::ATTRIBUTE_POSITION).unwrap();
@@ -97,31 +91,14 @@ fn laplace_beltrami(mesh: &tri_mesh::prelude::Mesh, vertex_id: VertexID) -> Vect
     if !mesh.is_vertex_on_boundary(vertex_id) {
         let mut weight = 0.;
         let mut total_weight = 0.;
-
+        let position = mesh.vertex_position(vertex_id);
         for half_edge_id in mesh.vertex_halfedge_iter(vertex_id) {
-            let mut walker = mesh.walker_from_halfedge(half_edge_id);
+            let walker = mesh.walker_from_halfedge(half_edge_id);
             weight = contan_weight(mesh, half_edge_id);
             total_weight += weight;
-            laplace += weight * mesh.vertex_position(walker.vertex_id().unwrap());
+            laplace += weight * (position - mesh.vertex_position(walker.vertex_id().unwrap()));
         }
-        // loop {
-        //     match walker.halfedge_id() {
-        //         Some(edge_id) => {
-        //             weight = contan_weight(mesh, edge_id);
-        //             total_weight += weight;
-        //             laplace += weight * mesh.vertex_position(walker.vertex_id().unwrap());
-        //             walker = walker.into_next();
-        //         }
-        //         None => break,
-        //     }
-        //     if walker.vertex_id().unwrap() == vertex_id {
-        //         break;
-        //     }
-        // }
-        laplace -= total_weight * mesh.vertex_position(vertex_id);
-        // laplace vornoi area
         laplace /= 2. * vornoi_area(mesh, vertex_id);
-
         laplace
     } else {
         laplace
@@ -132,50 +109,29 @@ fn contan_weight(mesh: &tri_mesh::prelude::Mesh, edge_id: HalfEdgeID) -> f64 {
     let walker = mesh.walker_from_halfedge(edge_id);
     let vertex_id = walker.vertex_id().unwrap();
     let mut weight = 0.;
-    let v_position = mesh.vertex_position(vertex_id);
-    println!("contan weight vertex_id : {:?}", vertex_id);
-    for nb_edge_id in mesh.vertex_halfedge_iter(vertex_id) {
-        let nb_vertex_id = mesh.walker_from_halfedge(nb_edge_id).vertex_id().unwrap();
-        let mut walker = mesh.walker_from_vertex(nb_vertex_id);
-        println!(" nb vertex id  {:?}", nb_vertex_id);
-        let pp: VertexID;
-        let np: VertexID;
-        if mesh.is_edge_on_boundary(nb_edge_id) {
-            continue;
-        }
-        loop {
-            if walker.halfedge_id().is_none()
-                || mesh.is_edge_on_boundary(walker.halfedge_id().unwrap())
-            {
-                continue;
-            }
-            if walker.vertex_id().unwrap() == vertex_id {
-                pp = walker.clone().as_next().vertex_id().unwrap();
-                break;
-            } else {
-                walker = walker.into_twin().into_next();
-            }
-        }
-        loop {
-            if walker.halfedge_id().is_none()
-                || mesh.is_edge_on_boundary(walker.halfedge_id().unwrap())
-            {
-                continue;
-            }
-            if walker.clone().as_next().vertex_id().unwrap() == vertex_id {
-                np = walker.vertex_id().unwrap();
-                break;
-            } else {
-                walker = walker.into_twin().into_next();
-            }
-        }
 
-        let adj_position = mesh.vertex_position(vertex_id);
-        let pp_position = mesh.vertex_position(pp);
-        let np_position = mesh.vertex_position(np);
-        let cot_alpha = cot_vertor(&(adj_position - &pp_position), &(v_position - &pp_position));
-        let cot_beta = cot_vertor(&(adj_position - &np_position), &(v_position - &np_position));
-        weight += cot_alpha + cot_beta;
+    let h0 = edge_id;
+    let h1 = walker.clone().as_twin().halfedge_id().unwrap();
+
+    let p0 = mesh.vertex_position(vertex_id);
+    let p1 = mesh.vertex_position(walker.clone().as_twin().vertex_id().unwrap());
+    if !mesh.is_edge_on_boundary(h0) {
+        let p2_id = walker.clone().as_next().vertex_id().unwrap();
+        let p2 = mesh.vertex_position(p2_id);
+        let d0 = p0 - p2;
+        let d1 = p1 - p2;
+        let area = d0.cross(d1.clone()).magnitude();
+        let cot = d0.dot(d1.clone()) / area;
+        weight += cot;
+    }
+
+    if !mesh.is_edge_on_boundary(h1) {
+        let p2 = mesh.vertex_position(walker.clone().as_twin().as_next().vertex_id().unwrap());
+        let d0 = p0 - p2;
+        let d1 = p1 - p2;
+        let area = d0.cross(d1.clone()).magnitude();
+        let cot = d0.dot(d1.clone()) / area;
+        weight += cot;
     }
     weight
 }
@@ -185,21 +141,25 @@ fn vornoi_area(mesh: &tri_mesh::prelude::Mesh, vertex_id: VertexID) -> f64 {
     let mut area = 0.;
     for nb_edge_id in mesh.vertex_halfedge_iter(vertex_id) {
         let mut walker = mesh.walker_from_halfedge(nb_edge_id);
-        let q = walker.vertex_id().unwrap();
-        let q_position = mesh.vertex_position(q);
-        let r = walker.as_next().vertex_id().unwrap();
-        let r_position = mesh.vertex_position(r);
-        let p = walker.as_next().vertex_id().unwrap();
-        let p_position = mesh.vertex_position(p);
 
-        let pq = p_position - q_position;
-        let qr = r_position - q_position;
-        let pr = r_position - p_position;
+        let h0 = walker.vertex_id().unwrap();
+        let h1 = walker.as_next().vertex_id().unwrap();
+        let h2 = walker.as_next().vertex_id().unwrap();
+
+        let p = mesh.vertex_position(h2);
+        let q = mesh.vertex_position(h0);
+        let r = mesh.vertex_position(h1);
+
+        let pq = p - q;
+        let qr = r - q;
+        let pr = r - p;
 
         let tri_area = pq.cross(pr.clone()).magnitude();
-
+        if tri_area <= f64::MIN_POSITIVE {
+            continue;
+        }
         let dotp = pq.dot(pr.clone());
-        let dotq = qr.dot(pq.clone());
+        let dotq = -1. * qr.dot(pq.clone());
         let dotr = qr.dot(pr.clone());
 
         // angle at p is obtuse
@@ -212,7 +172,7 @@ fn vornoi_area(mesh: &tri_mesh::prelude::Mesh, vertex_id: VertexID) -> f64 {
         } else {
             let cotq = dotq / tri_area;
             let cotr = dotr / tri_area;
-            area += 0.125 * (pr.magnitude() * cotq + pq.magnitude() * cotr);
+            area += 0.125 * (pr.magnitude2() * cotq + pq.magnitude2() * cotr);
         }
     }
     area
