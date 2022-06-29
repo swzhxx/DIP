@@ -6,8 +6,10 @@ use bevy::{
 };
 
 use bevy_inspector_egui::egui::epaint::Vertex;
+use sparse21::Matrix as CooMatrix;
+
 use tri_mesh::{
-    prelude::{HalfEdgeID, InnerSpace, Vector3, VertexID, Walker},
+    prelude::{HalfEdgeID, InnerSpace, Vector3, VertexID, Walker, ID},
     MeshBuilder,
 };
 
@@ -34,16 +36,71 @@ impl SurfaceHalfEdge {
 
     pub fn minmial_surface(&mut self, vertex_id: VertexID) {
         let position = self.half_edge.vertex_position(vertex_id);
-        let lambda = 0.001;
-        let mean_curvature = self.mean_curvature(vertex_id);
-        let p = position - lambda * mean_curvature / 2.;
+        let lambda = 0.01;
+        let hn = self.mean_curvature_flow(vertex_id);
+        let p = position - lambda * hn / 2.;
         self.half_edge.move_vertex_to(vertex_id, p)
     }
-    pub fn mean_curvature(&self, vertex_id: VertexID) -> Vector3<f64> {
+    fn mean_curvature_flow(&self, vertex_id: VertexID) -> Vector3<f64> {
         // let normal = self.half_edge.vertex_normal(vertex_id);
-        let curvature = laplace_beltrami(&self.half_edge, vertex_id);
+        let mut curvature = laplace_beltrami(&self.half_edge, vertex_id);
+        curvature /= 2. * vornoi_area(&self.half_edge, vertex_id);
         curvature
     }
+
+    pub fn global_minial_surface(&mut self) {
+        let vertices = self.half_edge.no_vertices();
+
+        let mut coo = CooMatrix::new();
+        let mut b_x = vec![0.; vertices];
+        let mut b_y = vec![0.; vertices];
+        let mut b_z = vec![0.; vertices];
+        for vertex_id in self.half_edge.vertex_iter() {
+            let position = self.half_edge.vertex_position(vertex_id);
+            if self.half_edge.is_vertex_on_boundary(vertex_id) {
+                coo.add_element(vertex_id.get() as usize, vertex_id.get() as usize, 1.);
+                b_x[vertex_id.get() as usize] = position.x;
+                b_y[vertex_id.get() as usize] = position.y;
+                b_z[vertex_id.get() as usize] = position.z;
+            } else {
+                let mut total_weight = 0.;
+                for half_edge_id in self.half_edge.vertex_halfedge_iter(vertex_id) {
+                    let to_vertex_id = self
+                        .half_edge
+                        .walker_from_halfedge(half_edge_id)
+                        .vertex_id()
+                        .unwrap();
+
+                    let weight = contan_weight(&self.half_edge, half_edge_id);
+                    total_weight += weight;
+                    coo.add_element(
+                        vertex_id.get() as usize,
+                        to_vertex_id.get() as usize,
+                        weight,
+                    );
+                }
+                coo.add_element(
+                    vertex_id.get() as usize,
+                    vertex_id.get() as usize,
+                    -total_weight,
+                );
+            }
+        }
+
+        let solve_x = coo.solve(b_x).unwrap();
+        let solve_y = coo.solve(b_y).unwrap();
+        let solve_z = coo.solve(b_z).unwrap();
+        let points = solve_x
+            .iter()
+            .zip(solve_y.iter().zip(solve_z.iter()))
+            .map(|point| Vector3::new(*point.0, *((point.1).0), *((point.1).1)))
+            .collect::<Vec<Vector3<f64>>>();
+        for (index, vertex_id) in self.half_edge.vertex_iter().enumerate() {
+            self.half_edge
+                .move_vertex_to(vertex_id, points[index].clone())
+        }
+    }
+
     fn mesh_point3_vertices(mesh: &Mesh) -> Vec<f64> {
         let vertex = mesh.attribute(Mesh::ATTRIBUTE_POSITION).unwrap();
         let vertex = match vertex {
@@ -98,7 +155,6 @@ fn laplace_beltrami(mesh: &tri_mesh::prelude::Mesh, vertex_id: VertexID) -> Vect
             total_weight += weight;
             laplace += weight * (position - mesh.vertex_position(walker.vertex_id().unwrap()));
         }
-        laplace /= 2. * vornoi_area(mesh, vertex_id);
         laplace
     } else {
         laplace

@@ -15,4 +15,7 @@ bevy_obj = "0.7.0"
 nalgebra = "0.30.1"
 # plexus = {version = "0.0.11", features = ["geometry-cgmath"]}
 # rust-3d = "0.34.0"
+# nalgebra-sparse = "0.7.0"
+# sprs = "0.11.0"
+sparse21 = "0.2.1"
 tri-mesh = "0.5.0"
