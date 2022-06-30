@@ -4,6 +4,7 @@ use bevy::{
     pbr::StandardMaterial,
     prelude::{AssetServer, Plugin},
 };
+use bevy_inspector_egui::{Inspectable, InspectorPlugin};
 // use rust_3d::{EId, HalfEdge};
 
 use crate::half_edge::SurfaceHalfEdge;
@@ -14,12 +15,27 @@ impl Plugin for DenoisePlugin {
     fn build(&self, app: &mut App) {
         app.add_startup_system(Self::load_bunny_obj)
             .add_system(Self::to_half_edge)
-            .add_system(Self::denoise);
+            .add_system(Self::denoise)
+            .add_plugin(InspectorPlugin::<DenoisePluginUI>::new());
     }
 }
 
 #[derive(Component)]
 struct BunnyObj(Handle<Mesh>, Option<SurfaceHalfEdge>);
+
+#[derive(Inspectable)]
+struct DenoisePluginUI {
+    global_minmial_surface: bool,
+    local_minmial_surface: bool,
+}
+impl Default for DenoisePluginUI {
+    fn default() -> Self {
+        Self {
+            global_minmial_surface: false,
+            local_minmial_surface: false,
+        }
+    }
+}
 
 impl DenoisePlugin {
     fn denoise() {
@@ -30,56 +46,29 @@ impl DenoisePlugin {
         mut commands: Commands,
         mut meshes: ResMut<Assets<Mesh>>,
         mut query: Query<&mut BunnyObj>,
+        mut ui: ResMut<DenoisePluginUI>,
     ) {
         for mut bunny_obj_handle in query.iter_mut() {
-            if bunny_obj_handle.1.is_some() {
-                // let surface = bunny_obj_handle.1.as_mut().unwrap();
-                // for vertex in surface.half_edge_mut().vertex_iter() {
-                //     if surface.half_edge().is_vertex_on_boundary(vertex) {
-                //         continue;
-                //     }
-                //     surface.minmial_surface(vertex);
-                // }
-                // let postion_buffer = surface
-                //     .half_edge()
-                //     .positions_buffer()
-                //     .iter()
-                //     .enumerate()
-                //     .fold(vec![], |mut acc, (usize, value)| {
-                //         if usize % 3 == 0 {
-                //             acc.push(vec![])
-                //         }
-                //         acc.last_mut().unwrap().push(*value as f32);
-                //         acc
-                //     })
-                //     .iter()
-                //     .map(|item| [item[0], item[1], item[2]])
-                //     .collect::<Vec<[f32; 3]>>();
-                // meshes
-                //     .get_mut(&bunny_obj_handle.0)
-                //     .unwrap()
-                //     .insert_attribute(Mesh::ATTRIBUTE_POSITION, postion_buffer.clone());
+            if bunny_obj_handle.1.is_some() && ui.local_minmial_surface {
+                let mesh = meshes.get_mut(&bunny_obj_handle.0).unwrap();
+                let surface = bunny_obj_handle.1.as_mut().unwrap();
+                for vertex in surface.half_edge_mut().vertex_iter() {
+                    if surface.half_edge().is_vertex_on_boundary(vertex) {
+                        continue;
+                    }
+                    surface.minmial_surface(vertex);
+                }
+                surface.cover_position_buffer_to_bevy_mesh(mesh);
                 return;
-            }
-            if let Some(bunny_mesh) = meshes.get_mut(&bunny_obj_handle.0) {
-                let mut surface_half_edge = SurfaceHalfEdge::new(bunny_mesh);
-                surface_half_edge.global_minial_surface();
-                let postion_buffer = surface_half_edge
-                    .half_edge()
-                    .positions_buffer()
-                    .iter()
-                    .enumerate()
-                    .fold(vec![], |mut acc, (usize, value)| {
-                        if usize % 3 == 0 {
-                            acc.push(vec![])
-                        }
-                        acc.last_mut().unwrap().push(*value as f32);
-                        acc
-                    })
-                    .iter()
-                    .map(|item| [item[0], item[1], item[2]])
-                    .collect::<Vec<[f32; 3]>>();
-                bunny_mesh.insert_attribute(Mesh::ATTRIBUTE_POSITION, postion_buffer.clone());
+            } else if bunny_obj_handle.1.is_some() && ui.is_changed() && ui.global_minmial_surface {
+                ui.local_minmial_surface = false;
+                let mesh = meshes.get_mut(&bunny_obj_handle.0).unwrap();
+                let surface = bunny_obj_handle.1.as_mut().unwrap();
+                surface.global_minmial_surface();
+                surface.cover_position_buffer_to_bevy_mesh(mesh);
+                return;
+            } else if let Some(bunny_mesh) = meshes.get_mut(&bunny_obj_handle.0) {
+                let surface_half_edge = SurfaceHalfEdge::new(bunny_mesh);
                 bunny_obj_handle.1 = Some(surface_half_edge)
             }
         }

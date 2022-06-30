@@ -36,7 +36,7 @@ impl SurfaceHalfEdge {
 
     pub fn minmial_surface(&mut self, vertex_id: VertexID) {
         let position = self.half_edge.vertex_position(vertex_id);
-        let lambda = 0.01;
+        let lambda = 0.001;
         let hn = self.mean_curvature_flow(vertex_id);
         let p = position - lambda * hn / 2.;
         self.half_edge.move_vertex_to(vertex_id, p)
@@ -44,11 +44,11 @@ impl SurfaceHalfEdge {
     fn mean_curvature_flow(&self, vertex_id: VertexID) -> Vector3<f64> {
         // let normal = self.half_edge.vertex_normal(vertex_id);
         let mut curvature = laplace_beltrami(&self.half_edge, vertex_id);
-        curvature /= 2. * vornoi_area(&self.half_edge, vertex_id);
+        curvature /= 2. * voronoi_area(&self.half_edge, vertex_id);
         curvature
     }
 
-    pub fn global_minial_surface(&mut self) {
+    pub fn global_minmial_surface(&mut self) {
         let vertices = self.half_edge.no_vertices();
 
         let mut coo = CooMatrix::new();
@@ -139,6 +139,24 @@ impl SurfaceHalfEdge {
     pub fn half_edge_mut(&mut self) -> &mut tri_mesh::prelude::Mesh {
         &mut self.half_edge
     }
+    pub fn cover_position_buffer_to_bevy_mesh(&self, mesh: &mut Mesh) {
+        let postion_buffer = self
+            .half_edge()
+            .positions_buffer()
+            .iter()
+            .enumerate()
+            .fold(vec![], |mut acc, (usize, value)| {
+                if usize % 3 == 0 {
+                    acc.push(vec![])
+                }
+                acc.last_mut().unwrap().push(*value as f32);
+                acc
+            })
+            .iter()
+            .map(|item| [item[0], item[1], item[2]])
+            .collect::<Vec<[f32; 3]>>();
+        mesh.insert_attribute(Mesh::ATTRIBUTE_POSITION, postion_buffer.clone());
+    }
 }
 
 fn laplace_beltrami(mesh: &tri_mesh::prelude::Mesh, vertex_id: VertexID) -> Vector3<f64> {
@@ -192,7 +210,7 @@ fn contan_weight(mesh: &tri_mesh::prelude::Mesh, edge_id: HalfEdgeID) -> f64 {
     weight
 }
 
-fn vornoi_area(mesh: &tri_mesh::prelude::Mesh, vertex_id: VertexID) -> f64 {
+fn voronoi_area(mesh: &tri_mesh::prelude::Mesh, vertex_id: VertexID) -> f64 {
     // let mut walker = mesh.walker_from_vertex(vertex_id);
     let mut area = 0.;
     for nb_edge_id in mesh.vertex_halfedge_iter(vertex_id) {
