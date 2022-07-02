@@ -27,12 +27,14 @@ struct BunnyObj(Handle<Mesh>, Option<SurfaceHalfEdge>);
 struct DenoisePluginUI {
     global_minmial_surface: bool,
     local_minmial_surface: bool,
+    harmonic_map: bool,
 }
 impl Default for DenoisePluginUI {
     fn default() -> Self {
         Self {
             global_minmial_surface: false,
             local_minmial_surface: false,
+            harmonic_map: false,
         }
     }
 }
@@ -67,6 +69,11 @@ impl DenoisePlugin {
                 surface.global_minmial_surface();
                 surface.cover_position_buffer_to_bevy_mesh(mesh);
                 return;
+            } else if ui.harmonic_map && bunny_obj_handle.1.is_some() && ui.is_changed() {
+                let mesh = meshes.get_mut(&bunny_obj_handle.0).unwrap();
+                let surface = bunny_obj_handle.1.as_mut().unwrap();
+                surface.harmonic_map();
+                surface.cover_position_buffer_to_bevy_mesh(mesh);
             } else if let Some(bunny_mesh) = meshes.get_mut(&bunny_obj_handle.0) {
                 let surface_half_edge = SurfaceHalfEdge::new(bunny_mesh);
                 bunny_obj_handle.1 = Some(surface_half_edge)

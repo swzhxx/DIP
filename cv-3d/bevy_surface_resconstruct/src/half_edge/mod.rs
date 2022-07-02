@@ -101,6 +101,126 @@ impl SurfaceHalfEdge {
         }
     }
 
+    pub fn harmonic_map(&mut self) {
+        let mut start_v: Option<VertexID> = None;
+        let mesh = &mut self.half_edge;
+        let vertices = mesh.no_vertices();
+        for vertex in mesh.vertex_iter() {
+            if mesh.is_vertex_on_boundary(vertex) {
+                start_v = Some(vertex);
+                break;
+            }
+        }
+        if start_v.is_none() {
+            return;
+        }
+        let mut boundary_vec: Vec<VertexID> = vec![];
+        println!("find boundary start");
+
+        // 寻找 boundary 的vertex
+        {
+            let mut now: Option<VertexID> = start_v;
+            let mut prev: Option<VertexID> = None;
+
+            for edge in mesh.vertex_halfedge_iter(start_v.unwrap()) {
+                if mesh.is_edge_on_boundary(edge) {
+                    prev = now;
+                    let walker = mesh.walker_from_halfedge(edge);
+                    now = Some(walker.vertex_id().unwrap());
+                    break;
+                }
+            }
+            while now != start_v {
+                for edge in mesh.vertex_halfedge_iter(now.unwrap()) {
+                    let walker = mesh.walker_from_halfedge(edge);
+                    if mesh.is_edge_on_boundary(edge) && prev != walker.vertex_id() {
+                        prev = now;
+                        boundary_vec.push(prev.unwrap());
+                        now = Some(walker.vertex_id().unwrap());
+                        break;
+                    }
+                }
+            }
+        }
+        println!("find boundary end {}", boundary_vec.len());
+        let mut b_u = vec![0.; vertices];
+        let mut b_v = vec![0.; vertices];
+
+        // square init
+        {
+            let length = 1.;
+            let delta_size = boundary_vec.len() / 4;
+            let landmark_idx1 = delta_size;
+            let landmark_idx2 = 2 * delta_size;
+            let landmark_idx3 = 3 * delta_size;
+
+            let mut delta = length / landmark_idx1 as f64;
+            println!("delta {:?}", delta);
+            for i in 0..landmark_idx1 {
+                b_u[boundary_vec[i].get() as usize] = 0.;
+                b_v[boundary_vec[i].get() as usize] = i as f64 * delta;
+            }
+            b_u[boundary_vec[landmark_idx1].get() as usize] = 0.;
+            b_v[boundary_vec[landmark_idx1].get() as usize] = length;
+
+            delta = length / (landmark_idx2 - landmark_idx1) as f64;
+            for (i, j) in (landmark_idx1 + 1..landmark_idx2).enumerate() {
+                // b_u[boundary_vec[i].get()] = i
+                b_u[boundary_vec[j].get() as usize] = i as f64 * delta;
+                b_v[boundary_vec[j].get() as usize] = length;
+            }
+            b_u[boundary_vec[landmark_idx2].get() as usize] = length;
+            b_v[boundary_vec[landmark_idx2].get() as usize] = length;
+
+            delta = length / (landmark_idx3 - landmark_idx2) as f64;
+            for (i, j) in (landmark_idx2 + 1..landmark_idx3).enumerate() {
+                b_u[boundary_vec[j].get() as usize] = length;
+                b_v[boundary_vec[j].get() as usize] = length - i as f64 * delta;
+            }
+            b_u[boundary_vec[landmark_idx3].get() as usize] = length;
+            b_v[boundary_vec[landmark_idx3].get() as usize] = 0.;
+
+            delta = length / (boundary_vec.len() - landmark_idx3) as f64;
+            for (i, j) in (landmark_idx3 + 1..boundary_vec.len()).enumerate() {
+                b_u[boundary_vec[j].get() as usize] = length - i as f64 * delta;
+                b_v[boundary_vec[j].get() as usize] = 0.;
+            }
+        }
+        println!("{:?}", b_u);
+        println!("{:?}", b_v);
+        let mut coo = CooMatrix::new();
+        for vertex in mesh.vertex_iter() {
+            if mesh.is_vertex_on_boundary(vertex) {
+                coo.add_element(vertex.get() as usize, vertex.get() as usize, 1.);
+            } else {
+                let mut total_weight = 0.;
+                for edge_id in mesh.vertex_halfedge_iter(vertex) {
+                    let weight = contan_weight(mesh, edge_id);
+                    let walker = mesh.walker_from_halfedge(edge_id);
+                    coo.add_element(
+                        vertex.get() as usize,
+                        walker.vertex_id().unwrap().get() as usize,
+                        weight,
+                    );
+                    total_weight += weight;
+                }
+                coo.add_element(vertex.get() as usize, vertex.get() as usize, -total_weight);
+            }
+        }
+        let disk_u = coo.solve(b_u).unwrap();
+        let disk_v = coo.solve(b_v).unwrap();
+        disk_u
+            .iter()
+            .zip(disk_v.iter())
+            .enumerate()
+            .for_each(|item| {
+                println!("{:?}", item.1);
+                mesh.move_vertex_to(
+                    VertexID::new(item.0 as u32),
+                    tri_mesh::prelude::Vec3::new(*(item.1 .0) as f64, *(item.1 .1) as f64, 0.),
+                )
+            });
+    }
     fn mesh_point3_vertices(mesh: &Mesh) -> Vec<f64> {
         let vertex = mesh.attribute(Mesh::ATTRIBUTE_POSITION).unwrap();
         let vertex = match vertex {
