@@ -2,6 +2,8 @@ mod denoise_plugin;
 mod half_edge;
 mod init;
 mod orbit_controls;
+mod simplification_plugin;
+mod simplificate;
 use bevy::{asset::AssetServerSettings, prelude::*};
 use denoise_plugin::DenoisePlugin;
 use init::SurfaceDefaultPlugin;
