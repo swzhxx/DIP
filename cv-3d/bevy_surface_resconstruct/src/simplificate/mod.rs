@@ -1,11 +1,11 @@
-use std::ops::Add;
+use std::{collections::HashMap, ops::Add};
 
 use bevy::render::render_graph::Edge;
-use nalgebra::{Matrix4, Vector4};
+use nalgebra::{AbstractRotation, Matrix4, Vector3, Vector4};
 use sparse21::Matrix;
 use tri_mesh::{
     mesh::vertex_measures,
-    prelude::{VertexID, ID},
+    prelude::{HalfEdgeID, VertexID, Walker, ID},
 };
 
 use crate::half_edge::{self, SurfaceHalfEdge};
@@ -19,13 +19,13 @@ impl Simpleificate {
         assert!(ratio > 0. && ratio <= 1.);
         let vertices = self.mesh.no_vertices();
         let faces = self.mesh.no_faces();
-        let it_num = ((1. - ratio) * vertices) as u32;
+        let it_num = ((1. - ratio) * vertices as f64) as u32;
         //1. Compute the Q matrices for all the initial vertices
         let mut Q: Vec<Matrix4<f64>> = Self::make_temporary_property(vertices as u32);
         let mut v = Self::make_temporary_property::<Vector4<f64>>(vertices as u32);
         let mut flag = Self::make_temporary_property::<u32>(vertices as u32);
         let mut p = Self::make_temporary_property::<Vector4<f64>>(faces as u32);
-
+        let mut deleted_map: HashMap<u32, bool> = HashMap::new();
         for face_id in self.mesh.face_iter() {
             let walker = self.mesh.walker_from_face(face_id);
             let normal = self.mesh.face_normal(face_id);
@@ -48,7 +48,7 @@ impl Simpleificate {
             v[vertex_id.get() as usize][1] = position[1];
             v[vertex_id.get() as usize][2] = position[2];
             v[vertex_id.get() as usize][3] = 1.;
-            flag[vertex_id.get() as usize] = false;
+            flag[vertex_id.get() as usize] = 0;
         }
         // 2. Select all valid pairs (only vertices in an edge are considered)
         // 3. Compute the optimal contraction target
@@ -82,8 +82,83 @@ impl Simpleificate {
             };
             q.push(ts);
         }
+        for _i in 0..it_num {
+            let s = q.pop().unwrap();
+            if deleted_map.get(&(s.hf.get() as u32)).is_some() {
+                continue;
+            }
+            let mut tvh;
+            /***     if(mesh.is_collapse_ok(s.hf))
+            {
+                mesh.collapse(s.hf);
+                tvh = s.vto;
+                flag[s.vto] ++;
+                flag[s.vfrom] ++;
+            }
 
-        todo!();
+            else if(mesh.is_collapse_ok(mesh.opposite_halfedge_handle(s.hf)))
+            {
+                mesh.collapse(mesh.opposite_halfedge_handle(s.hf));
+                tvh = s.vfrom;
+                flag[s.vto] ++;
+                flag[s.vfrom] ++;
+            }
+            else
+            {
+                continue;
+            }
+                 */
+            if true {
+                // why ?
+                tvh = s.vto.clone();
+                flag[tvh.get() as usize] += 1;
+                flag[tvh.get() as usize] += 1;
+            } else {
+                tvh = s.vfrom.clone();
+                flag[tvh.get() as usize] += 1;
+                flag[tvh.get() as usize] += 1;
+            }
+
+            let new_vertex_id = self.mesh.collapse_edge(s.hf);
+            Q[tvh.get() as usize] = s.Q_new;
+            v[tvh.get() as usize][0] = s.np[0];
+            v[tvh.get() as usize][1] = s.np[1];
+            v[tvh.get() as usize][2] = s.np[2];
+            v[tvh.get() as usize][3] = 1.;
+
+            let walker = self.mesh.walker_from_vertex(tvh);
+
+            for vertex_id in TriMeshVertexAroundIter::new(walker) {
+                let mut walker = self.mesh.walker_from_vertex(vertex_id);
+                let edge = walker.as_twin().halfedge_id().unwrap();
+                let tt = vertex_id;
+                let newQ = s.Q_new + Q[tt.get() as usize];
+                let mut tQ = newQ;
+                let b = Vector4::new(0., 0., 0., 1.);
+                tQ[(3, 0)] = 0.;
+                tQ[(3, 1)] = 0.;
+                tQ[(3, 2)] = 0.;
+                tQ[(3, 3)] = 1.;
+                let lu = tQ.full_piv_lu();
+                let mut vnew: Vector4<f64> = Default::default();
+                if lu.is_invertible() {
+                    vnew = tQ.try_inverse().unwrap() * &b;
+                } else {
+                    vnew = (v[tvh.get() as usize] + v[tt.get() as usize]) / 2.0
+                }
+                let np = Vector3::new(vnew[0], vnew[1], vnew[2]);
+                let ts = EdgeCollapseStructure {
+                    hf: edge,
+                    vto: tt,
+                    cost: (vnew.transpose() * &newQ * &vnew)[0],
+                    np: np,
+                    vto_flag: flag[tt.get() as usize],
+                    vfrom: tvh,
+                    Q_new: newQ,
+                };
+                q.push(ts);
+            }
+        }
     }
 
     pub fn make_temporary_property<T>(num: u32) -> Vec<T>
@@ -113,5 +188,32 @@ impl Add for &EdgeCollapseStructure {
 
     fn add(self, rhs: Self) -> Self::Output {
         self.cost + rhs.cost
+    }
+}
+
+pub struct TriMeshVertexAroundIter<'a> {
+    step: u32,
+    walker: tri_mesh::prelude::Walker<'a>,
+    start: VertexID,
+}
+impl<'a> TriMeshVertexAroundIter<'a> {
+    fn new(walker: tri_mesh::prelude::Walker<'a>) -> Self {
+        Self {
+            step: 0,
+            start: walker.clone().vertex_id().unwrap(),
+            walker: walker,
+        }
+    }
+}
+impl<'a> Iterator for TriMeshVertexAroundIter<'a> {
+    type Item = VertexID;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        let next: Option<VertexID> = self.walker.as_twin().as_next().vertex_id();
+        if next.as_ref().unwrap().get() == self.start.get() {
+            None
+        } else {
+            next
+        }
     }
 }
